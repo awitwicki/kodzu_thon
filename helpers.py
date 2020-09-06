@@ -129,7 +129,7 @@ def get_new_cases(country = 'ukraine'):
         #datetime format => '2020-03-27T00:00:00Z'
         days = [ datetime.datetime.strptime(f['Date'], '%Y-%m-%dT%H:%M:%SZ') for f in raw_api_dict]
 
-        fr = 30
+        fr = 60
         days = days[-fr:]
         cases = cases[-fr:]
 
@@ -140,15 +140,13 @@ def get_new_cases(country = 'ukraine'):
 def covid_graph():
     ukraine_days, ukraine_cases = get_new_cases()
     poland_days, poland_cases = get_new_cases(country='poland')
-
-    # import numpy as np
-    # import matplotlib.pyplot as plt
+    belarus_days, belarus_cases = get_new_cases(country='belarus')
 
     fig, ax = plt.subplots()
-    ax.plot(ukraine_days, ukraine_cases)
-    ax.plot(poland_days, poland_cases)
-    ax.legend(('Ukraine', 'Poland'), loc='upper left')
-
+    ax.bar(ukraine_days, ukraine_cases, color = 'cadetblue')
+    ax.bar(poland_days, poland_cases, color = 'teal')
+    ax.bar(belarus_days, belarus_cases, color = 'navy')
+    ax.legend(('Ukraine', 'Poiland', 'Belarus'), loc='upper left')
     # rotate and align the tick labels so they look better
     fig.autofmt_xdate()
 

@@ -66,6 +66,7 @@ async def handler(event):
 async def handler(event):
     try:
         chat = await event.get_chat()
+        await event.edit("Loading...")
         img_name = helpers.covid_graph()
         await event.delete()
         cov = helpers.get_covid()
