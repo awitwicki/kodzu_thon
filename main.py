@@ -165,8 +165,7 @@ async def handler(event):
         async with client.action(chat, 'record-round'):
             # make sound
             origin_text = event.message.text.replace('!v ', '')
-            voicename, _duration = speech.syntese(origin_text, gender=1)
-            # voicename, _duration = speech.syntese(origin_text, frequency=0.6, gender=1)
+            voicename, _duration = speech.syntese(origin_text)
 
             # mount to video
             video_file = speech.mount_video(voicename)

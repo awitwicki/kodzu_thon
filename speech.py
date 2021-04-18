@@ -1,7 +1,7 @@
 import os, sys, time, datetime, random
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = sys.argv[0].replace('main.py','jsonkey.json')
+from gtts import gTTS
 
-from google.cloud import texttospeech
+
 
 def try_delete(filename):
     try:
@@ -10,36 +10,19 @@ def try_delete(filename):
     except Exception as e:
         print(f'e')
 
+
 def get_waveform(_min, _max, count):
     return [random.randrange(_min, _max, 1) for _ in range(count)]
 
-def syntese(input_text, background = False, frequency = 1, gender = texttospeech.SsmlVoiceGender.MALE):
-    client = texttospeech.TextToSpeechClient()
-    input_text = texttospeech.SynthesisInput(text=input_text)
 
-    # Note: the voice can also be specified by name.
-    # Names of voices can be retrieved with client.list_voices().
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="ru-RU",
-        name="ru-RU-Wavenet-E",
-        ssml_gender=gender,
-    )
-
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
-    )
-
-    response = client.synthesize_speech(
-        request={"input": input_text, "voice": voice, "audio_config": audio_config}
-    )
+def syntese(input_text, background = False, frequency = 1):
+    obj = gTTS(input_text, lang='ru')
 
     # new_file name
     mp3_file_name = 'media/temp' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.mp3'
 
-    # The response's audio_content is binary.
-    with open(mp3_file_name, "wb") as out:
-        out.write(response.audio_content)
-        print(f'file {mp3_file_name} created')
+    # save voice to file
+    obj.save(mp3_file_name)
 
     return_filename = ''
 
@@ -70,32 +53,13 @@ def syntese(input_text, background = False, frequency = 1, gender = texttospeech
     return return_filename, duration
 
 def demon(input_text, background = False):
-    client = texttospeech.TextToSpeechClient()
-    input_text = texttospeech.SynthesisInput(text=input_text)
-
-    # Note: the voice can also be specified by name.
-    # Names of voices can be retrieved with client.list_voices().
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="ru-RU",
-        name="ru-RU-Wavenet-A",
-        ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
-    )
-
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
-    )
-
-    response = client.synthesize_speech(
-        request={"input": input_text, "voice": voice, "audio_config": audio_config}
-    )
+    obj = gTTS(input_text, lang='ru')
 
     # new_file name
     mp3_file_name = 'media/temp' + datetime.datetime.utcnow().strftime('%Y%m%d_%H%M%S') + '.mp3'
 
-    # The response's audio_content is binary.
-    with open(mp3_file_name, "wb") as out:
-        out.write(response.audio_content)
-        print(f'file {mp3_file_name} created')
+    # save voice to file
+    obj.save(mp3_file_name)
 
     return_filename = ''
 
