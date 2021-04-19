@@ -4,6 +4,7 @@ import requests
 import urllib
 import json
 import uuid
+import random
 
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
@@ -15,6 +16,17 @@ if not os.path.exists('img'):
 
 # load api keys
 OPEN_WEATHER_API_KEY = os.environ['OPEN_WEATHER_API_KEY']
+
+symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍👨‍👦👨‍👨‍👦‍👦'
+
+def influx_query(query_str: str):
+    try:
+        url = 'http://localhost:8086/write?db=bots'
+        headers = {'Content-Type': 'application/Text'}
+
+        x = requests.post(url, data = query_str, headers=headers)
+    except Exception as e:
+        print(e)
 
 def get_btc():
     r = requests.get(url = "https://api.coindesk.com/v1/bpi/currentprice.json") 
@@ -56,35 +68,69 @@ def get_weather():
         temp = f"{round(forecast['temp'] - 273.15, 1)}C"
         descriptions = [description['description'] for description in forecast['weather']]
         description_string = ', '.join(descriptions)
-        forecast_line = f"{time} - `{temp}`, {description_string}\n"
+        forecast_line = f"{time} `{temp}`, {description_string}\n"
         weather_string += forecast_line
 
     return weather_string
+
+def get_upload_temp_data(raw_api_dict):
+    try:
+        # current weather
+        current = raw_api_dict['current']
+        temperature = f"{round(current['temp'] - 273.15, 1)}"
+        humidity = f"{current['humidity']}"
+        pressure = f"{current['pressure']}"
+
+        data_str = f'iot,room=outside_rzeszow,device=kodzuthon,sensor=openweather_api temperature={temperature},humidity={humidity},pressure={pressure}'
+        influx_query(data_str)
+
+    except Exception as e:
+        print(e)
+
+def get_raw_temp():
+    url = urllib.request.urlopen(f'https://api.openweathermap.org/data/2.5/onecall?lat=50.04&lon=21.99&APPID={OPEN_WEATHER_API_KEY}')
+    output = url.read().decode('utf-8')
+    raw_api_dict = json.loads(output)
+    url.close()
+
+    return raw_api_dict
+
+def get_temp(raw_api_dict):
+    # current weather
+    current = raw_api_dict['current']
+    temp = f"{round(current['temp'] - 273.15, 1)}cm"
+
+    return temp
 
 def get_covid():
     def make_countrystring(country):
         return f"{country['Country']}: +{country['NewConfirmed']}/{country['TotalConfirmed']}"
 
-    url = urllib.request.urlopen('https://api.covid19api.com/summary')
-    output = url.read().decode('utf-8')
-    raw_api_dict = json.loads(output)
-    url.close()
+    try:
+        url = urllib.request.urlopen('https://api.covid19api.com/summary')
+        output = url.read().decode('utf-8')
+        raw_api_dict = json.loads(output)
+        url.close()
 
-    countries = raw_api_dict['Countries']
-    countries = {f['CountryCode']:f for f in countries}
+        countries = raw_api_dict['Countries']
+        countries = {f['CountryCode']:f for f in countries}
 
-    pl = countries['PL']
-    ua = countries['UA']
-    br = countries['BY']
+        pl = countries['PL']
+        ua = countries['UA']
+        cz = countries['CZ']
+        br = countries['BY']
 
-    pl = make_countrystring(pl)
-    ua = make_countrystring(ua)
-    br = make_countrystring(br)
+        pl = make_countrystring(pl)
+        ua = make_countrystring(ua)
+        cz = make_countrystring(cz)
+        br = make_countrystring(br)
 
-    ret = f'{pl}\n{ua}\n{br}'
-    return ret
+        ret = f'{pl}\n{ua}\n{cz}\n{br}\n\ncovid19api.com'
+        return ret
+    except:
+        return 'Caching in progress...'
 
-def get_year_progress():
+def get_year_progress(length=20):
     def progressBar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
         percent = ("{0:." + str(decimals) + "f}").format(100 * (value / float(total)))
         filledLength = int(length * value // total)
@@ -94,8 +140,9 @@ def get_year_progress():
     from datetime import datetime
     day_of_year = datetime.now().timetuple().tm_yday
     timenow = datetime.now().strftime("%H:%M")
-    yr = progressBar(day_of_year, 365, length=20)
-    yr = f'2020:{yr}{timenow} {day_of_year}/365 days'
+    yr = progressBar(day_of_year, 365, length=length)
+    yr = f'{yr} {day_of_year}/365'
+    # yr = f'2020:{yr}{timenow} {day_of_year}/365 days'
 
     return yr
 
@@ -141,21 +188,49 @@ def covid_graph():
     ukraine_days, ukraine_cases = get_new_cases()
     poland_days, poland_cases = get_new_cases(country='poland')
     belarus_days, belarus_cases = get_new_cases(country='belarus')
+    czech_days, czech_cases = get_new_cases(country='czech-republic')
+
+    # make permillion
+    ukraine_cases = [case / 41.98e6 * 1e6 for case in ukraine_cases]
+    poland_cases = [case / 37.97e6 * 1e6 for case in poland_cases]
+    belarus_cases = [case / 9.4e6 * 1e6 for case in belarus_cases]
+    czech_cases = [case / 10.6e6 * 1e6 for case in czech_cases]
 
     fig, ax = plt.subplots()
-    ax.bar(ukraine_days, ukraine_cases, color = 'cadetblue')
-    ax.bar(poland_days, poland_cases, color = 'teal')
-    ax.bar(belarus_days, belarus_cases, color = 'navy')
-    ax.legend(('Ukraine', 'Poiland', 'Belarus'), loc='upper left')
+    ax.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
+    ax.plot(poland_days, poland_cases, color = 'gold')
+    ax.plot(czech_days, czech_cases, color = 'red',  alpha = 0.5)
+    ax.plot(belarus_days, belarus_cases, color = 'cornflowerblue')
+    ax.legend(('Ukraine', 'Poland', 'Czech', 'Belarus'), loc='upper left')
     # rotate and align the tick labels so they look better
     fig.autofmt_xdate()
-
-    ax.set_title('Covid new cases trends')
+    # plt.rc('grid', linestyle=".", color='black')
+    ax.grid(linestyle = '--')
+    ax.set_title('Covid new cases trends per population')
 
     fname = 'img/' + str(uuid.uuid4()) + '.png'
     fig.savefig(fname)
     return fname
 
-def get_rosir():
-    r = requests.get('http://rosir.eu/news.php')
-    return r.text
+
+def random_emoji():
+    f = open(file = 'emojis.txt',mode = 'r', encoding = 'utf-8')
+    emojis = f.readline()
+    f.close()
+    return random.choice(emojis)
+
+def random_otmazka():
+    f = open(file = 'otmazki.txt', mode = 'r', encoding = 'utf-8')
+    lines = f.readlines()
+    f.close()
+    return random.choice(lines)
+
+def break_text(msg_text):
+    count = int(len(msg_text)/4)
+
+    for i in range(count):
+        emotion = random.choice(symbols)
+        ind = random.randint(0, len(msg_text))
+        msg_text = msg_text[:ind] + emotion + msg_text[ind:]
+
+    return msg_text

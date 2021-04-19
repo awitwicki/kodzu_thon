@@ -1,14 +1,21 @@
 from telethon import TelegramClient, events, sync, types, utils, functions
 from telethon.tl.functions.account import UpdateProfileRequest
+from telethon.tl.functions.channels import EditBannedRequest
+from telethon.tl.types import ChatBannedRights
 
 import urllib.request, json
 import time
+
+from telethon.tl.types import Message
 import speech
 import os
 from collections import deque
 import helpers
 import asyncio
 import datetime
+import random
+
+import khaleesi
 
 api_id = os.environ['TELETHON_API_ID']
 api_hash = os.environ['TELETHON_API_HASH']
@@ -20,10 +27,30 @@ client.start()
 @client.on(events.NewMessage(pattern='(^!id$)', outgoing=True))
 async def handler(event):
     if event.message.is_reply:
+        chat = await event.get_chat()
         msg = await event.message.get_reply_message()
-        reply_text = f'id: {msg.sender.id}, name: {msg.sender.first_name}'
+        reply_text = f'id: {msg.sender.id}, name: {msg.sender.first_name}, chat id: {chat.id}'
         await client.send_message('me', reply_text)
     await event.delete()
+
+
+#break message
+@client.on(events.NewMessage(pattern='(^gum$)', outgoing=True))
+async def handler(event):
+    if event.message.is_reply:
+        msg = await event.message.get_reply_message()
+        reply_text = helpers.break_text(msg.text)
+        await event.edit(reply_text)
+
+
+#khaleesi message
+@client.on(events.NewMessage(pattern='(^cum$)', outgoing=True))
+async def handler(event):
+    if event.message.is_reply:
+        msg = await event.message.get_reply_message()
+        reply_text = khaleesi.Khaleesi.khaleesi(msg.text)
+        await event.edit(reply_text)
+
 
 #send typing
 @client.on(events.NewMessage(pattern='!t', outgoing=True))
@@ -38,28 +65,50 @@ async def handler(event):
     except Exception as e:
         print(e)
 
+
 #weather
 @client.on(events.NewMessage(pattern='(^!w$)', outgoing=True))
 async def handler(event):
     weather = helpers.get_weather()
     await event.edit(weather)
 
-# basen
-@client.on(events.NewMessage(pattern='(^basen$)', outgoing=True))
-async def handler(event):
-    rosir = helpers.get_rosir()
-    await event.edit(rosir)
 
 #covid
 @client.on(events.NewMessage(pattern='(^cov$)', outgoing=True))
 async def handler(event):
     try:
         chat = await event.get_chat()
+        await event.edit("Loading...")
         cov = helpers.get_covid()
         await event.edit(cov)
 
     except Exception as e:
         print(e)
+
+
+#otmazka
+@client.on(events.NewMessage(pattern='(^ot$)', outgoing=True))
+async def handler(event):
+    try:
+        chat = await event.get_chat()
+        otm = helpers.random_otmazka()
+        await event.edit(otm)
+
+    except Exception as e:
+        print(e)
+
+
+#year progress
+@client.on(events.NewMessage(pattern='(^year$)', outgoing=True))
+async def handler(event):
+    try:
+        text = "2021 year progress:\n"
+        text += helpers.get_year_progress(30)
+        await event.edit(f'`{text}`')
+
+    except Exception as e:
+        print(e)
+
 
 #covid
 @client.on(events.NewMessage(pattern='(^covg$)', outgoing=True))
@@ -75,14 +124,49 @@ async def handler(event):
     except Exception as e:
         print(e)
 
-#audio
+
+#autoresponder
 @client.on(events.NewMessage(incoming=True))
-async def handler(event):
-    if event.voice:
-        if event.is_private:
+async def handler(event: events.NewMessage.Event):
+    chat = await event.get_chat()
+
+    if event.is_private:
+        if event.voice:
             reply_text = 'Голосовое сообщение не доставлено так как пользователь заблокировал эту опцию. Это сообщение написано автоматически.'
-            chat = await event.get_chat()
             await client.send_message(chat, reply_text, reply_to = event.message.id)
+
+
+#mute user
+@client.on(events.NewMessage(pattern=r'!m', outgoing=True))
+async def handler(event):
+    is_reply = event.message.reply_to_msg_id
+    chat = await event.get_chat()
+    to_message = await event.get_reply_message()
+
+    time_flags_dict = {"m": [60, "minuts"], "h": [3600, "ours"], "d": [86400, "deys"]}
+    if not is_reply is None:
+        try:
+            #m or h or d
+            time_type = event.message.text[-1]
+
+            #get number
+            count = int(event.message.text.split()[1][:-1])
+            #convert to seconds
+            count_seconds = count * time_flags_dict[time_type][0]
+
+            rights = ChatBannedRights(
+                until_date=datetime.datetime.now() + datetime.timedelta(seconds=count_seconds),
+                send_messages=True
+            )
+
+            await client(EditBannedRequest(chat.id, to_message.sender_id, rights))
+            await event.edit(f'Muted for {count} {time_flags_dict[time_type][1]}')
+
+        except Exception as e:
+            print(e)
+    else:
+        await event.delete()
+
 
 #snake text
 @client.on(events.NewMessage(pattern='!s', outgoing=True))
@@ -104,38 +188,50 @@ async def handler(event):
     except Exception as e:
         print(e)
 
+
 #🦔🍎
 @client.on(events.NewMessage(pattern='🦔', outgoing=True))
 async def handler(event):
-    try:
-        origin_text = ''
+    for i in range(19):
+        await event.edit('🍎'*(18 - i) + '🦔')
+        await asyncio.sleep(.5)
 
-        for i in range(19, -1, -1):
-            edit_text = origin_text
-            for r in range(i):
-                edit_text += '🍎'
-            edit_text += '🦔'
-            print(origin_text)
-            await event.edit(edit_text)
-            time.sleep(0.5)
 
-    except Exception as e:
-        print(e)
-
-#taco text
-@client.on(events.NewMessage(pattern='(^тако$)', outgoing=True))
+#Loading
+@client.on(events.NewMessage(pattern='loading', outgoing=True))
 async def handler(event):
     try:
-        chat = await event.get_chat()
-        time.sleep(0.5)
+        percentage = 0
+        while percentage < 100:
+            temp = 100 - percentage
+            temp = temp if temp > 5 else 5
+            percentage += temp / random.randint(5, 10)
+            percentage = round(percentage, 2)
+            # if percentage > 100: percentage = 100
+            progress = int(percentage // 5)
+            await event.edit(f'`|{"█" * progress}{"-" * (20 - progress)}| {percentage}%`')
+            await asyncio.sleep(.5)
+
+        time.sleep(5)
         await event.delete()
-        for i in range(5):
-            msg = await client.send_message(chat, 'тако')
-            time.sleep(0.5)
-            await msg.delete()
 
     except Exception as e:
         print(e)
+
+
+#fast print
+@client.on(events.NewMessage(pattern='!f', outgoing=True))
+async def handler(event):
+    try:
+        origin_text = event.message.text.replace('!f ', '')
+        for i in range(len(origin_text)):
+            if origin_text[i] == " ": continue
+            await event.edit(origin_text[:i+1])
+            await asyncio.sleep(.1)
+
+    except Exception as e:
+        print(e)
+
 
 #voice note
 @client.on(events.NewMessage(pattern='!a', outgoing=True))
@@ -156,6 +252,7 @@ async def handler(event):
     except Exception as e:
         print(e)
 
+
 #video note
 @client.on(events.NewMessage(pattern='!v', outgoing=True))
 async def handler(event):
@@ -165,7 +262,7 @@ async def handler(event):
         async with client.action(chat, 'record-round'):
             # make sound
             origin_text = event.message.text.replace('!v ', '')
-            voicename, _duration = speech.syntese(origin_text)
+            voicename, _duration = speech.syntese(origin_text, background = True)
 
             # mount to video
             video_file = speech.mount_video(voicename)
@@ -178,6 +275,7 @@ async def handler(event):
 
     except Exception as e:
         print(e)
+
 
 #demon voice note
 @client.on(events.NewMessage(pattern='!d', outgoing=True))
@@ -198,6 +296,7 @@ async def handler(event):
     except Exception as e:
         print(e)
 
+
 #background voice note
 @client.on(events.NewMessage(outgoing=True))
 async def handler(event):
@@ -214,28 +313,33 @@ async def handler(event):
 
             speech.try_delete(voicename)
 
+
 #btc price
 @client.on(events.NewMessage(pattern='(^btc$)|(^Btc$)|(^BTC$)', outgoing=True))
 async def handler(event):
     try:
-        btc_price = helpers.get_btc() 
+        btc_price = helpers.get_btc()
         await event.edit(btc_price)
 
     except Exception as e:
         print(e)
 
+
 #update bio
 async def update_bio():
     while True:
-        # delta = int((datetime.datetime(2020, 9, 17) - datetime.datetime.now()).total_seconds())
-        # string = f'In {delta} seconds'
+        new_about = helpers.get_year_progress()
+        raw_temp = helpers.get_raw_temp()
+        new_lastname = helpers.get_temp(raw_temp)
 
-        string = helpers.get_life_progress()
-        print(string)
+        print(f'Update info for {new_lastname} - {new_about}')
+        await client(UpdateProfileRequest(about=new_about, last_name=new_lastname))
 
-        await client(UpdateProfileRequest(about=string))
+        helpers.get_upload_temp_data(raw_temp)
         await asyncio.sleep(300)
+
         # https://github.com/gawel/aiocron CRON <====================================
+
 
 try:
     print('(Press Ctrl+C to stop this)')
