@@ -1,7 +1,8 @@
 from telethon import TelegramClient, events, sync, types, utils, functions
+from telethon.client import messages
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import ChatBannedRights
+from telethon.tl.types import Chat, ChatBannedRights
 
 import urllib.request, json
 import time
@@ -32,6 +33,18 @@ async def handler(event):
         reply_text = f'id: {msg.sender.id}, name: {msg.sender.first_name}, chat id: {chat.id}'
         await client.send_message('me', reply_text)
     await event.delete()
+
+
+#chatid
+@client.on(events.NewMessage(pattern='(^info$)', outgoing=True))
+async def handler(event):
+    try:
+        chat = await event.get_chat()
+        msg = await event.message.get_reply_message()
+        await event.edit(f'ChatId: {chat.id}')
+
+    except Exception as e:
+        print(e)
 
 
 #break message
@@ -125,12 +138,31 @@ async def handler(event):
         print(e)
 
 
+#satelite image
+@client.on(events.NewMessage(pattern='(^sat$)', outgoing=True))
+async def handler(event):
+    try:
+        chat = await event.get_chat()
+        await event.edit("Loading...")
+        img_name = helpers.get_sat_img()
+        await event.delete()
+        await client.send_file(chat, img_name)
+
+    except Exception as e:
+        print(e)
+
+
 #autoresponder
 @client.on(events.NewMessage(incoming=True))
 async def handler(event: events.NewMessage.Event):
-    chat = await event.get_chat()
+    if event.is_group:
+        chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
+        chat_title = chat.title.replace(' ', '\ ')
+        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title} imcome_messages=1')
 
     if event.is_private:
+        # helpers.influx_query('bots,chatname=privmessages,messagetype=incoming call=true')
+
         if event.voice:
             reply_text = 'Голосовое сообщение не доставлено так как пользователь заблокировал эту опцию. Это сообщение написано автоматически.'
             await client.send_message(chat, reply_text, reply_to = event.message.id)
@@ -219,7 +251,7 @@ async def handler(event):
         print(e)
 
 
-#fast print
+#print citate
 @client.on(events.NewMessage(pattern='!f', outgoing=True))
 async def handler(event):
     try:
@@ -333,6 +365,7 @@ async def update_bio():
         new_lastname = helpers.get_temp(raw_temp)
 
         print(f'Update info for {new_lastname} - {new_about}')
+        await client(UpdateProfileRequest(about=new_about))
         await client(UpdateProfileRequest(about=new_about, last_name=new_lastname))
 
         helpers.get_upload_temp_data(raw_temp)

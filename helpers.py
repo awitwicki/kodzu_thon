@@ -24,7 +24,7 @@ def influx_query(query_str: str):
         url = 'http://localhost:8086/write?db=bots'
         headers = {'Content-Type': 'application/Text'}
 
-        x = requests.post(url, data = query_str, headers=headers)
+        x = requests.post(url, data=query_str.encode('utf-8'), headers=headers)
     except Exception as e:
         print(e)
 
@@ -211,6 +211,23 @@ def covid_graph():
     fname = 'img/' + str(uuid.uuid4()) + '.png'
     fig.savefig(fname)
     return fname
+
+def get_sat_img():
+    fname = 'img/' + str(uuid.uuid4()) + '.jpg'
+
+    with open(fname, 'wb') as handle:
+        response = requests.get('https://en.sat24.com/image?type=visual&region=eu', stream=True)
+
+        if not response.ok:
+            print(response)
+
+        for block in response.iter_content(1024):
+            if not block:
+                break
+
+            handle.write(block)
+
+        return fname
 
 
 def random_emoji():
