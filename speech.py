@@ -32,7 +32,7 @@ def syntese(input_text, background = False, frequency = 1):
 
     freq_params = f'asetrate=22050*{frequency},aresample=22050,atempo=1/{frequency},' if frequency != 1 else ''
 
-    os.system(f"ffmpeg -i {mp3_file_name} -af {freq_params}volume=13dB -c:a libvorbis -q:a 4 {ogg_file_name}")
+    os.system(f"ffmpeg -i {mp3_file_name} -af {freq_params}volume=13dB -c:a libopus -b:a 96K {ogg_file_name}")
 
     # .\ffmpeg.exe -i test.mp3 -af asetrate=22050*0.6,aresample=22050,atempo=1/0.6,volume=13dB -c:a libvorbis tst11.ogg
 
@@ -41,7 +41,7 @@ def syntese(input_text, background = False, frequency = 1):
     if background:
         #merge
         new_ogg_file_name = ogg_file_name.replace('ogg', '_merged.ogg')
-        os.system(f'ffmpeg -filter_complex "amovie={ogg_file_name} [a0]; amovie=media/r.ogg [a1]; [a0][a1] amix=inputs=2:duration=shortest [aout]" -map [aout] -acodec libvorbis {new_ogg_file_name}')
+        os.system(f'ffmpeg -filter_complex "amovie={ogg_file_name} [a0]; amovie=media/r.ogg [a1]; [a0][a1] amix=inputs=2:duration=shortest [aout]" -map [aout] -acodec libopus -b:a 96K {new_ogg_file_name}')
         return_filename = new_ogg_file_name
 
         try_delete(ogg_file_name)
