@@ -158,7 +158,8 @@ async def handler(event: events.NewMessage.Event):
     if event.is_group:
         chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
         chat_title = chat.title.replace(' ', '\ ')
-        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title} imcome_messages=1')
+        chat_id = chat.id
+        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id} imcome_messages=1')
 
     if event.is_private:
         # helpers.influx_query('bots,chatname=privmessages,messagetype=incoming call=true')
