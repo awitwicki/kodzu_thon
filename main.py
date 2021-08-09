@@ -172,33 +172,33 @@ async def handler(event: events.NewMessage.Event):
 #mute user
 @client.on(events.NewMessage(pattern=r'!m', outgoing=True))
 async def handler(event):
-    is_reply = event.message.reply_to_msg_id
     chat = await event.get_chat()
-    to_message = await event.get_reply_message()
+    reply_to_message = await event.get_reply_message()
+
+    if not reply_to_message:
+        await event.delete()
+        return
 
     time_flags_dict = {"m": [60, "minuts"], "h": [3600, "ours"], "d": [86400, "deys"]}
-    if not is_reply is None:
-        try:
-            #m or h or d
-            time_type = event.message.text[-1]
+    try:
+        #m or h or d
+        time_type = event.message.text[-1]
 
-            #get number
-            count = int(event.message.text.split()[1][:-1])
-            #convert to seconds
-            count_seconds = count * time_flags_dict[time_type][0]
+        #get number
+        count = int(event.message.text.split()[1][:-1])
+        #convert to seconds
+        count_seconds = count * time_flags_dict[time_type][0]
 
-            rights = ChatBannedRights(
-                until_date=datetime.datetime.now() + datetime.timedelta(seconds=count_seconds),
-                send_messages=True
-            )
+        rights = ChatBannedRights(
+            until_date=datetime.datetime.now() + datetime.timedelta(seconds=count_seconds),
+            send_messages=True
+        )
 
-            await client(EditBannedRequest(chat.id, to_message.sender_id, rights))
-            await event.edit(f'Muted for {count} {time_flags_dict[time_type][1]}')
+        await client(EditBannedRequest(chat.id, reply_to_message.sender_id, rights))
+        await event.edit(f'Muted for {count} {time_flags_dict[time_type][1]}')
 
-        except Exception as e:
-            print(e)
-    else:
-        await event.delete()
+    except Exception as e:
+        print(e)
 
 
 #snake text
