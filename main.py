@@ -155,8 +155,9 @@ async def handler(event):
 #autoresponder
 @client.on(events.NewMessage(incoming=True))
 async def handler(event: events.NewMessage.Event):
+    chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
+
     if event.is_group:
-        chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
         chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
         chat_id = chat.id
         helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id} imcome_messages=1')
@@ -170,6 +171,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #mute user
+#TODO test
 @client.on(events.NewMessage(pattern=r'!m', outgoing=True))
 async def handler(event):
     chat = await event.get_chat()
