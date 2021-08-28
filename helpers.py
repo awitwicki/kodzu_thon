@@ -8,14 +8,12 @@ import random
 
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
+import python_weather
 
 # create folders
 if not os.path.exists('img'):
     os.makedirs('img')
     print(f"Created dir /img")
-
-# load api keys
-OPEN_WEATHER_API_KEY = os.environ['OPEN_WEATHER_API_KEY']
 
 symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍👨‍👦👨‍👨‍👦‍👦'
 
@@ -27,6 +25,7 @@ def influx_query(query_str: str):
         x = requests.post(url, data=query_str.encode('utf-8'), headers=headers)
     except Exception as e:
         print(e)
+
 
 def get_btc():
     r = requests.get(url = "https://api.coindesk.com/v1/bpi/currentprice.json") 
@@ -42,65 +41,49 @@ def get_btc():
 
     return price
 
+
 def get_weather():
-    url = urllib.request.urlopen(f'https://api.openweathermap.org/data/2.5/onecall?lat=50.04&lon=21.99&APPID={OPEN_WEATHER_API_KEY}')
-    output = url.read().decode('utf-8')
-    raw_api_dict = json.loads(output)
-    url.close()
-
-    # current weather
-    current = raw_api_dict['current']
-    temp = f"{round(current['temp'] - 273.15, 1)}"
-    humidity = f"{current['humidity']}"
-
-    weather_string = "Weather in **Rzeszów**\n"
-    weather_string += f"Temperature: `{temp}C` Humidity: `{humidity}%`\n"
-
-    for weather in current["weather"]:
-        weather_string += f'{weather["main"]}: `{weather["description"]}`\n'
-
-    weather_string += f"\nForecast:\n"
-
-    #hourly forecast
-    hourly = raw_api_dict['hourly']
-    for forecast in hourly[:12]:
-        time = str(datetime.datetime.fromtimestamp(forecast["dt"]))[11:]
-        temp = f"{round(forecast['temp'] - 273.15, 1)}C"
-        descriptions = [description['description'] for description in forecast['weather']]
-        description_string = ', '.join(descriptions)
-        forecast_line = f"{time} `{temp}`, {description_string}\n"
-        weather_string += forecast_line
-
+    weather_string = 'Weather forecast is not completed yet'
     return weather_string
+
 
 def get_upload_temp_data(raw_api_dict):
     try:
         # current weather
-        current = raw_api_dict['current']
-        temperature = f"{round(current['temp'] - 273.15, 1)}"
-        humidity = f"{current['humidity']}"
-        pressure = f"{current['pressure']}"
+        temperature = raw_api_dict['current']
+        humidity = raw_api_dict['humidity']
 
-        data_str = f'iot,room=outside_rzeszow,device=kodzuthon,sensor=openweather_api temperature={temperature},humidity={humidity},pressure={pressure}'
+        data_str = f'iot,room=outside_rzeszow,device=kodzuthon,sensor=openweather_api temperature={temperature},humidity={humidity}'
         influx_query(data_str)
 
     except Exception as e:
         print(e)
 
-def get_raw_temp():
-    url = urllib.request.urlopen(f'https://api.openweathermap.org/data/2.5/onecall?lat=50.04&lon=21.99&APPID={OPEN_WEATHER_API_KEY}')
-    output = url.read().decode('utf-8')
-    raw_api_dict = json.loads(output)
-    url.close()
+
+async def get_raw_temp():
+    # declare the client. format defaults to metric system (celcius, km/h, etc.)
+    client = python_weather.Client(format=python_weather.IMPERIAL)
+
+    # fetch a weather forecast from a city
+    weather = await client.find("Oddea")
+
+    # close the wrapper once done
+    await client.close()
+
+    raw_api_dict = {}
+    raw_api_dict['current'] = weather.current.temperature
+    raw_api_dict['humidity'] = weather.current.humidity
 
     return raw_api_dict
+
 
 def get_temp(raw_api_dict):
     # current weather
     current = raw_api_dict['current']
-    temp = f"{round(current['temp'] - 273.15, 1)}cm"
+    temp = f"{current}cm"
 
     return temp
+
 
 def get_covid():
     def make_countrystring(country):
@@ -130,6 +113,7 @@ def get_covid():
     except:
         return 'Caching in progress...'
 
+
 def get_year_progress(length=20):
     def progressBar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
         percent = ("{0:." + str(decimals) + "f}").format(100 * (value / float(total)))
@@ -145,6 +129,7 @@ def get_year_progress(length=20):
     # yr = f'2020:{yr}{timenow} {day_of_year}/365 days'
 
     return yr
+
 
 def get_life_progress():
     def progressBar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
@@ -162,6 +147,7 @@ def get_life_progress():
     yr = f'Uptime {days} days. Progress {percent}%'
 
     return yr
+
 
 def get_new_cases(country = 'ukraine'):
     try:
@@ -183,6 +169,7 @@ def get_new_cases(country = 'ukraine'):
         return days, cases
     except:
         return [],[]
+
 
 def covid_graph():
     ukraine_days, ukraine_cases = get_new_cases()
@@ -212,8 +199,9 @@ def covid_graph():
     fig.savefig(fname)
     return fname
 
+
 def get_sat_img():
-    fname = 'img/' + str(uuid.uuid4()) + '.jpg'
+    fname = 'img/' + datetime.datetime.now().strftime("%m%d%Y%H_%M_%S") + '.jpg'
 
     with open(fname, 'wb') as handle:
         response = requests.get('https://en.sat24.com/image?type=visual&region=eu', stream=True)
@@ -236,11 +224,13 @@ def random_emoji():
     f.close()
     return random.choice(emojis)
 
+
 def random_otmazka():
     f = open(file = 'otmazki.txt', mode = 'r', encoding = 'utf-8')
     lines = f.readlines()
     f.close()
     return random.choice(lines)
+
 
 def break_text(msg_text):
     count = int(len(msg_text)/4)
