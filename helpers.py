@@ -6,6 +6,7 @@ import json
 import uuid
 import random
 
+from googletrans import Translator
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import python_weather
@@ -65,7 +66,7 @@ async def get_raw_temp():
     client = python_weather.Client(format=python_weather.IMPERIAL)
 
     # fetch a weather forecast from a city
-    weather = await client.find("Oddea")
+    weather = await client.find("Odessa")
 
     # close the wrapper once done
     await client.close()
@@ -241,3 +242,12 @@ def break_text(msg_text):
         msg_text = msg_text[:ind] + emotion + msg_text[ind:]
 
     return msg_text
+
+
+def translate_text(msg_text) -> str:
+    try:
+        translator = Translator()
+        result = translator.translate(msg_text, dest='ru')
+        return result.text
+    except:
+        return "Can't translate"

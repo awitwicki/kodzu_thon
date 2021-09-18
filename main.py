@@ -2,7 +2,7 @@ from telethon import TelegramClient, events, sync, types, utils, functions
 from telethon.client import messages
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import Chat, ChatBannedRights
+from telethon.tl.types import Chat, ChatBannedRights, User
 
 import urllib.request, json
 import time
@@ -62,6 +62,16 @@ async def handler(event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
         reply_text = khaleesi.Khaleesi.khaleesi(msg.text)
+        await event.edit(reply_text)
+
+
+#translate message
+@client.on(events.NewMessage(pattern='^tr$', outgoing=True))
+async def handler(event):
+    if event.message.is_reply:
+        msg = await event.message.get_reply_message()
+        await event.edit('Translating...')
+        reply_text = helpers.translate_text(msg.message)
         await event.edit(reply_text)
 
 
@@ -160,6 +170,9 @@ async def handler(event: events.NewMessage.Event):
     if event.is_group:
         chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
         chat_id = chat.id
+        sender: User = await event.get_sender()
+        print(sender.username)
+
         helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id} imcome_messages=1')
 
     if event.is_private:
@@ -276,6 +289,11 @@ async def handler(event):
         await event.delete()
         async with client.action(chat, 'record-voice'):
             origin_text = event.message.text.replace('!a ', '')
+
+            if event.message.is_reply:
+                msg = await event.message.get_reply_message()
+                origin_text = msg.text
+
             voicename, _duration = speech.syntese(origin_text, background = True)
 
             chat = await event.get_chat()
@@ -364,7 +382,7 @@ async def handler(event):
 async def update_bio():
     while True:
         new_about = helpers.get_year_progress()
-        raw_temp = helpers.get_raw_temp()
+        raw_temp = await helpers.get_raw_temp()
         new_lastname = helpers.get_temp(raw_temp)
 
         print(f'Update info for {new_lastname} - {new_about}')
