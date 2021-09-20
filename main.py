@@ -205,7 +205,7 @@ async def handler(event):
         count_seconds = count * time_flags_dict[time_type][0]
 
         rights = ChatBannedRights(
-            until_date=datetime.datetime.now() + datetime.timedelta(seconds=count_seconds),
+            until_date=datetime.datetime.utcnow() + datetime.timedelta(seconds=count_seconds),
             send_messages=True
         )
 
