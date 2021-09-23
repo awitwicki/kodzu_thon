@@ -1,16 +1,12 @@
-from telethon import TelegramClient, events, sync, types, utils, functions
-from telethon.client import messages
+from telethon import TelegramClient, events, types, utils
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import Chat, ChatBannedRights, User
+from telethon.tl.types import ChatBannedRights, User
 
-import urllib.request, json
 import time
 
-from telethon.tl.types import Message
 import speech
 import os
-from collections import deque
 import helpers
 import asyncio
 import datetime
@@ -24,32 +20,25 @@ api_hash = os.environ['TELETHON_API_HASH']
 client = TelegramClient('session_name', api_id, api_hash)
 client.start()
 
+
 #userId
-@client.on(events.NewMessage(pattern='(^!id$)', outgoing=True))
-async def handler(event):
-    if event.message.is_reply:
-        chat = await event.get_chat()
-        msg = await event.message.get_reply_message()
-        reply_text = f'id: {msg.sender.id}, name: {msg.sender.first_name}, chat id: {chat.id}'
-        await client.send_message('me', reply_text)
+@client.on(events.NewMessage(pattern='^scans$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    reply_text = await helpers.build_user_info(event)
+    await client.send_message('me', reply_text)
     await event.delete()
 
 
 #chatid
-@client.on(events.NewMessage(pattern='(^info$)', outgoing=True))
-async def handler(event):
-    try:
-        chat = await event.get_chat()
-        msg = await event.message.get_reply_message()
-        await event.edit(f'ChatId: {chat.id}')
-
-    except Exception as e:
-        print(e)
+@client.on(events.NewMessage(pattern='^scan$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    reply_text = await helpers.build_user_info(event)
+    await event.edit(reply_text)
 
 
 #break message
 @client.on(events.NewMessage(pattern='(^gum$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
         reply_text = helpers.break_text(msg.text)
@@ -58,7 +47,7 @@ async def handler(event):
 
 #khaleesi message
 @client.on(events.NewMessage(pattern='(^cum$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
         reply_text = khaleesi.Khaleesi.khaleesi(msg.text)
@@ -67,7 +56,7 @@ async def handler(event):
 
 #translate message
 @client.on(events.NewMessage(pattern='^tr$', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
         await event.edit('Translating...')
@@ -77,7 +66,7 @@ async def handler(event):
 
 #send typing
 @client.on(events.NewMessage(pattern='!t', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.delete()
@@ -91,27 +80,14 @@ async def handler(event):
 
 #weather
 @client.on(events.NewMessage(pattern='(^!w$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     weather = helpers.get_weather()
     await event.edit(weather)
 
 
-#covid
-@client.on(events.NewMessage(pattern='(^cov$)', outgoing=True))
-async def handler(event):
-    try:
-        chat = await event.get_chat()
-        await event.edit("Loading...")
-        cov = helpers.get_covid()
-        await event.edit(cov)
-
-    except Exception as e:
-        print(e)
-
-
 #otmazka
 @client.on(events.NewMessage(pattern='(^ot$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         otm = helpers.random_otmazka()
@@ -123,7 +99,7 @@ async def handler(event):
 
 #year progress
 @client.on(events.NewMessage(pattern='(^year$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         text = "2021 year progress:\n"
         text += helpers.get_year_progress(30)
@@ -135,7 +111,7 @@ async def handler(event):
 
 #covid
 @client.on(events.NewMessage(pattern='(^covg$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.edit("Loading...")
@@ -150,7 +126,7 @@ async def handler(event):
 
 #satelite image
 @client.on(events.NewMessage(pattern='(^sat$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.edit("Loading...")
@@ -184,9 +160,8 @@ async def handler(event: events.NewMessage.Event):
 
 
 #mute user
-#TODO test
 @client.on(events.NewMessage(pattern=r'!m', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     chat = await event.get_chat()
     reply_to_message = await event.get_reply_message()
 
@@ -194,7 +169,12 @@ async def handler(event):
         await event.delete()
         return
 
-    time_flags_dict = {"m": [60, "minuts"], "h": [3600, "ours"], "d": [86400, "deys"]}
+    time_flags_dict = {
+        "m": [60, "minuts"],
+        "h": [3600, "ours"],
+        "d": [86400, "deys"]
+        }
+
     try:
         #m or h or d
         time_type = event.message.text[-1]
@@ -218,7 +198,7 @@ async def handler(event):
 
 #snake text
 @client.on(events.NewMessage(pattern='!s', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         origin_text = event.message.text.replace('!s ', '')
 
@@ -239,7 +219,7 @@ async def handler(event):
 
 #🦔🍎
 @client.on(events.NewMessage(pattern='🦔', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     for i in range(19):
         await event.edit('🍎'*(18 - i) + '🦔')
         await asyncio.sleep(.5)
@@ -247,7 +227,7 @@ async def handler(event):
 
 #Loading
 @client.on(events.NewMessage(pattern='loading', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         percentage = 0
         while percentage < 100:
@@ -269,7 +249,7 @@ async def handler(event):
 
 #print citate
 @client.on(events.NewMessage(pattern='!f', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         origin_text = event.message.text.replace('!f ', '')
         for i in range(len(origin_text)):
@@ -283,7 +263,7 @@ async def handler(event):
 
 #voice note
 @client.on(events.NewMessage(pattern='!a', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.delete()
@@ -308,7 +288,7 @@ async def handler(event):
 
 #video note
 @client.on(events.NewMessage(pattern='!v', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.delete()
@@ -332,7 +312,7 @@ async def handler(event):
 
 #demon voice note
 @client.on(events.NewMessage(pattern='!d', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.delete()
@@ -352,7 +332,7 @@ async def handler(event):
 
 #background voice note
 @client.on(events.NewMessage(outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     if event.voice:
         chat = await event.get_chat()
         await event.delete()
@@ -369,7 +349,7 @@ async def handler(event):
 
 #btc price
 @client.on(events.NewMessage(pattern='(^btc$)|(^Btc$)|(^BTC$)', outgoing=True))
-async def handler(event):
+async def handler(event: events.NewMessage.Event):
     try:
         btc_price = helpers.get_btc()
         await event.edit(btc_price)
