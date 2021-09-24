@@ -143,20 +143,31 @@ async def handler(event: events.NewMessage.Event):
 async def handler(event: events.NewMessage.Event):
     chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
 
-    if event.is_group:
-        chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
-        chat_id = chat.id
-        sender: User = await event.get_sender()
-        print(sender.username)
-
-        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id} imcome_messages=1')
-
     if event.is_private:
-        # helpers.influx_query('bots,chatname=privmessages,messagetype=incoming call=true')
-
         if event.voice:
             reply_text = 'Голосовое сообщение не доставлено так как пользователь заблокировал эту опцию. Это сообщение написано автоматически.'
             await client.send_message(chat, reply_text, reply_to = event.message.id)
+
+    if event.is_group:
+        msg = event.message
+        chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
+        
+        user_name = ''
+        if msg.sender.username:
+            user_name += '@' + msg.sender.username
+        if msg.sender.first_name:
+            user_name += f' {msg.sender.first_name}'
+        if msg.sender.last_name:
+            user_name += f' {msg.sender.last_name}'
+
+        user_name = user_name.replace(' ', '\ ').replace('=', '\=')
+
+        chat_id = chat.id
+        user_id = msg.sender.id
+        sender: User = await event.get_sender()
+        print(sender.username)
+
+        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
 
 
 #mute user
