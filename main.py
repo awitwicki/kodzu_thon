@@ -279,9 +279,9 @@ async def handler(event: events.NewMessage.Event):
         chat = await event.get_chat()
         await event.delete()
         async with client.action(chat, 'record-voice'):
-            origin_text = event.message.text.replace('!a ', '')
+            origin_text = event.message.text.replace('!a', '').strip()
 
-            if event.message.is_reply:
+            if event.message.is_reply and origin_text == '':
                 msg = await event.message.get_reply_message()
                 origin_text = msg.text
 
