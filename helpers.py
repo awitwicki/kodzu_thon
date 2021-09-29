@@ -250,7 +250,7 @@ def translate_text(msg_text) -> str:
     try:
         translator = Translator()
         result = translator.translate(msg_text, dest='ru')
-        return result.text
+        return f'Translated from: {result.src}\n\n{result.text}'
     except:
         return "Can't translate"
 
