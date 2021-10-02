@@ -52,6 +52,7 @@ def syntese(input_text, background = False, frequency = 1):
     duration = int(os.popen(f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {return_filename}').read().split('.')[0])
     return return_filename, duration
 
+
 def demon(input_text, background = False):
     obj = gTTS(input_text, lang='ru')
 
@@ -71,7 +72,7 @@ def demon(input_text, background = False):
 
     return_filename = ogg_file_name
 
-    frequencies = [0.25, 0.75, 0.90 , 1.05]
+    frequencies = [0.25, 0.75, 0.90, 1.05]
     soundnames = []
 
     for freq in frequencies:
@@ -102,6 +103,7 @@ def demon(input_text, background = False):
     duration = int(os.popen(f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {return_filename}').read().split('.')[0])
     return return_filename, duration
 
+
 def mount_video(sound_file):
     video_file = 'media/diesel.mp4'
 
@@ -113,6 +115,7 @@ def mount_video(sound_file):
     os.system(f"ffmpeg -i {video_file} -i {sound_file} -c:v copy -map 0:v:0 -map 1:a:0 -shortest {new_video_file}")
 
     return new_video_file
+
 
 def megre_sounds(audio_file):
     # testing
