@@ -7,6 +7,7 @@ import uuid
 import random
 
 from googletrans import Translator
+from googlesearch import search
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import python_weather
@@ -253,6 +254,12 @@ def translate_text(msg_text) -> str:
         return f'Translated from: {result.src}\n\n{result.text}'
     except:
         return "Can't translate"
+
+
+def google_search(text: str) -> str:
+    result = search(text, num_results=1)
+    result = result[0].replace('https://','').replace('http://','')
+    return result
 
 
 async def build_user_info(event: events.NewMessage.Event):

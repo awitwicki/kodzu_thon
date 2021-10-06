@@ -64,6 +64,15 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(reply_text)
 
 
+#search text
+@client.on(events.NewMessage(pattern='!s', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    origin_text = event.message.text.replace('!s', '').strip()
+    await event.edit('Googling...')
+    reply_text = helpers.google_search(origin_text)
+    await event.edit(reply_text)
+
+
 #send typing
 @client.on(events.NewMessage(pattern='!t', outgoing=True))
 async def handler(event: events.NewMessage.Event):
@@ -202,27 +211,6 @@ async def handler(event: events.NewMessage.Event):
 
         await client(EditBannedRequest(chat.id, reply_to_message.sender_id, rights))
         await event.edit(f'Muted for {count} {time_flags_dict[time_type][1]}')
-
-    except Exception as e:
-        print(e)
-
-
-#snake text
-@client.on(events.NewMessage(pattern='!s', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        origin_text = event.message.text.replace('!s ', '')
-
-        for index, char in enumerate(origin_text):
-            newtext = list(origin_text)
-            newtext.insert(index, '**')
-            newtext.insert(index+2, '**')
-            newtext = ''.join(newtext)
-            print(newtext)
-            await event.edit(newtext)
-            time.sleep(0.5)
-
-        await event.edit(origin_text)
 
     except Exception as e:
         print(e)
