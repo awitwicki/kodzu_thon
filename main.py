@@ -70,7 +70,7 @@ async def handler(event: events.NewMessage.Event):
     origin_text = event.message.text.replace('!s', '').strip()
     await event.edit('Googling...')
     reply_text = helpers.google_search(origin_text)
-    await event.edit(reply_text)
+    await event.edit(reply_text, link_preview = True)
 
 
 #send typing
