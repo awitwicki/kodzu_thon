@@ -21,6 +21,33 @@ client = TelegramClient('session_name', api_id, api_hash)
 client.start()
 
 
+#help
+@client.on(events.NewMessage(pattern='^!h$', outgoing=True))
+async def help(event: events.NewMessage.Event):
+    reply_text = f'**Kodzuthon help**\n' \
+        '`scan [reply]` - scan message,\n' \
+        '`scans [reply]` - silently scan message,\n' \
+        '`gum [reply]` - insert emojis,\n' \
+        '`cum [reply]` - khaleese message,\n' \
+        '`!w` - get weather,\n' \
+        '`!s {search text}` - google text,\n' \
+        '`!t` - imitation typing for 5 minutes,\n' \
+        '`ot` - random otmazka,\n' \
+        '`year` - year info,\n' \
+        '`covg` - covid chart info,\n' \
+        '`sat` - image from satellite,\n' \
+        '`!m {20} {m/h/d}` - mute someone for {20} {m} - minutes,\n' \
+        '`🦔` - nice cartoon,\n' \
+        '`loading` - loading animation,\n' \
+        '`!f {text}` - print text animation,\n' \
+        '`!a {text \ or [reply]}` - generate speech,\n' \
+        '`!v {text \ or [reply]}` - video speech,\n' \
+        '`!d {text \ or [reply]}` - demon speech,\n' \
+        '`btc` - bitcoin stock price.'
+
+    await event.edit(reply_text)
+
+
 #userId
 @client.on(events.NewMessage(pattern='^scans$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
