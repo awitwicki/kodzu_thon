@@ -247,11 +247,14 @@ def break_text(msg_text):
     return msg_text
 
 
-def translate_text(msg_text) -> str:
+def translate_text(msg_text, dest = 'ru', silent_mode = False) -> str:
     try:
         translator = Translator()
-        result = translator.translate(msg_text, dest='ru')
-        return f'Translated from: {result.src}\n\n{result.text}'
+        result = translator.translate(msg_text, dest=dest)
+
+        return_text = '' if silent_mode else f'Translated from: {result.src}\n\n'
+        return_text += f'{result.text}'
+        return return_text
     except:
         return "Can't translate"
 

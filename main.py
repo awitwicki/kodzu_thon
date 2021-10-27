@@ -24,11 +24,13 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help**\n' \
+    reply_text = f'**Kodzuthon help** `v1.0`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
         '`cum [reply]` - khaleese message,\n' \
+        '`tr [reply]` - translate message,\n' \
+        '`tr {text or [reply]}` - translate to latin,\n' \
         '`!w` - get weather,\n' \
         '`!s {search text}` - google text,\n' \
         '`!t` - imitation typing for 5 minutes,\n' \
@@ -40,9 +42,9 @@ async def help(event: events.NewMessage.Event):
         '`🦔` - nice cartoon,\n' \
         '`loading` - loading animation,\n' \
         '`!f {text}` - print text animation,\n' \
-        '`!a {text \ or [reply]}` - generate speech,\n' \
-        '`!v {text \ or [reply]}` - video speech,\n' \
-        '`!d {text \ or [reply]}` - demon speech,\n' \
+        '`!a {text or [reply]}` - generate speech,\n' \
+        '`!v {text or [reply]}` - video speech,\n' \
+        '`!d {text or [reply]}` - demon speech,\n' \
         '`btc` - bitcoin stock price.'
 
     await event.edit(reply_text)
@@ -89,6 +91,15 @@ async def handler(event: events.NewMessage.Event):
         await event.edit('Translating...')
         reply_text = helpers.translate_text(msg.message)
         await event.edit(reply_text)
+
+
+#translate message latin
+@client.on(events.NewMessage(pattern='^trl', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    msg_text = (await event.message.get_reply_message()).text if event.message.is_reply else event.message.text.replace('trl', '').strip()
+    await event.edit('👹')
+    reply_text = helpers.translate_text(msg_text, dest='la', silent_mode=True)
+    await event.edit(reply_text)
 
 
 #search text
