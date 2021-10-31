@@ -260,9 +260,12 @@ def translate_text(msg_text, dest = 'ru', silent_mode = False) -> str:
 
 
 def google_search(text: str) -> str:
-    result = search(text, num_results=1)
-    result = result[0].replace('https://','').replace('http://','')
-    return result
+    try:
+        result = search(text, num_results=1)
+        result = result[0].replace('https://','').replace('http://','')
+        return result
+    except Exception as e:
+        return str(e)
 
 
 async def build_user_info(event: events.NewMessage.Event):
