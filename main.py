@@ -66,7 +66,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #break message
-@client.on(events.NewMessage(pattern='(^gum$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^gum$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
@@ -75,7 +75,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #khaleesi message
-@client.on(events.NewMessage(pattern='(^cum$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^cum$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
         msg = await event.message.get_reply_message()
@@ -103,7 +103,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #search text
-@client.on(events.NewMessage(pattern='!s', outgoing=True))
+@client.on(events.NewMessage(pattern='^!s', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     origin_text = event.message.text.replace('!s', '').strip()
     await event.edit('Googling...')
@@ -112,7 +112,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #send typing
-@client.on(events.NewMessage(pattern='!t', outgoing=True))
+@client.on(events.NewMessage(pattern='^!t$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -126,14 +126,14 @@ async def handler(event: events.NewMessage.Event):
 
 
 #weather
-@client.on(events.NewMessage(pattern='(^!w$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^!w$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     weather = helpers.get_weather()
     await event.edit(weather)
 
 
 #otmazka
-@client.on(events.NewMessage(pattern='(^ot$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^ot$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -145,7 +145,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #year progress
-@client.on(events.NewMessage(pattern='(^year$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^year$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         text = "2021 year progress:\n"
@@ -157,7 +157,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #covid
-@client.on(events.NewMessage(pattern='(^covg$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^covg$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -172,7 +172,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #satelite image
-@client.on(events.NewMessage(pattern='(^sat$)', outgoing=True))
+@client.on(events.NewMessage(pattern='^sat$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -218,7 +218,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #mute user
-@client.on(events.NewMessage(pattern=r'!m', outgoing=True))
+@client.on(events.NewMessage(pattern=r'^!m', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     chat = await event.get_chat()
     reply_to_message = await event.get_reply_message()
@@ -239,6 +239,7 @@ async def handler(event: events.NewMessage.Event):
 
         #get number
         count = int(event.message.text.split()[1][:-1])
+
         #convert to seconds
         count_seconds = count * time_flags_dict[time_type][0]
 
@@ -255,7 +256,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #🦔🍎
-@client.on(events.NewMessage(pattern='🦔', outgoing=True))
+@client.on(events.NewMessage(pattern='^🦔$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     for i in range(19):
         await event.edit('🍎'*(18 - i) + '🦔')
@@ -263,7 +264,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #Loading
-@client.on(events.NewMessage(pattern='loading', outgoing=True))
+@client.on(events.NewMessage(pattern='^loading$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         percentage = 0
@@ -285,7 +286,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #print citate
-@client.on(events.NewMessage(pattern='!f', outgoing=True))
+@client.on(events.NewMessage(pattern='^!f', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         origin_text = event.message.text.replace('!f ', '')
@@ -299,7 +300,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #voice note
-@client.on(events.NewMessage(pattern='!a', outgoing=True))
+@client.on(events.NewMessage(pattern='^!a', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -324,7 +325,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #video note
-@client.on(events.NewMessage(pattern='!v', outgoing=True))
+@client.on(events.NewMessage(pattern='^!v', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
@@ -348,7 +349,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #demon voice note
-@client.on(events.NewMessage(pattern='!d', outgoing=True))
+@client.on(events.NewMessage(pattern='^!d', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
