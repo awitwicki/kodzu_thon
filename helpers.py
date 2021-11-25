@@ -13,6 +13,8 @@ import matplotlib.dates as mdates
 import python_weather
 from telethon import events
 
+city_name = os.environ.get('TELETHON_CITY', 'Odessa')
+
 # create folders
 if not os.path.exists('img'):
     os.makedirs('img')
@@ -65,18 +67,24 @@ def get_upload_temp_data(raw_api_dict):
 
 
 async def get_raw_temp():
-    # declare the client. format defaults to metric system (celcius, km/h, etc.)
-    client = python_weather.Client(format=python_weather.IMPERIAL)
-
-    # fetch a weather forecast from a city
-    weather = await client.find("Odessa")
-
-    # close the wrapper once done
-    await client.close()
-
     raw_api_dict = {}
-    raw_api_dict['current'] = weather.current.temperature
-    raw_api_dict['humidity'] = weather.current.humidity
+    raw_api_dict['current'] = 0
+    raw_api_dict['humidity'] = 0
+
+    try:
+        # declare the client. format defaults to metric system (celcius, km/h, etc.)
+        client = python_weather.Client(format=python_weather.IMPERIAL)
+
+        # fetch a weather forecast from a city
+        weather = await client.find(city_name)
+
+        # close the wrapper once done
+        await client.close()
+
+        raw_api_dict['current'] = weather.current.temperature
+        raw_api_dict['humidity'] = weather.current.humidity
+    except:
+        pass
 
     return raw_api_dict
 
