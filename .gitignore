@@ -4,3 +4,5 @@
 *.json
 /img
 /tools
+
+.env

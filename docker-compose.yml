@@ -1,0 +1,11 @@
+version: "3.3"
+services:
+  kodzuthon:
+    build: .
+    image: kodzuthon
+    volumes:
+      - .:/app/
+    env_file:
+    - .env
+    container_name: kodzuthon-container
+    network_mode: host
