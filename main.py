@@ -196,26 +196,32 @@ async def handler(event: events.NewMessage.Event):
             await client.send_message(chat, reply_text, reply_to = event.message.id)
 
     if event.is_group:
-        msg = event.message
-        chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
-        
-        user_name = ''
-        if msg.sender.username:
-            user_name += '@' + msg.sender.username
-        if msg.sender.first_name:
-            user_name += f' {msg.sender.first_name}'
-        if msg.sender.last_name:
-            user_name += f' {msg.sender.last_name}'
+        try:
+            msg = event.message
+            chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
+            
+            user_name = ''
+            if msg.sender.username:
+                user_name += '@' + msg.sender.username
+                
+            try:
+                if msg.sender.first_name:
+                    user_name += f' {msg.sender.first_name}'
+                if msg.sender.last_name:
+                    user_name += f' {msg.sender.last_name}'
+            except:
+                user_name = f' {msg.sender.title}'
 
-        user_name = user_name.replace(' ', '\ ').replace('=', '\=')
+            user_name = user_name.replace(' ', '\ ').replace('=', '\=')
 
-        chat_id = chat.id
-        user_id = msg.sender.id
-        sender: User = await event.get_sender()
-        print(sender.username)
+            chat_id = chat.id
+            user_id = msg.sender.id
+            sender: User = await event.get_sender()
+            print(sender.username)
 
-        helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
-
+            helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
+        except:
+            pass
 
 #mute user
 @client.on(events.NewMessage(pattern=r'^!m', outgoing=True))

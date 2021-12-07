@@ -279,10 +279,15 @@ def google_search(text: str) -> str:
 async def build_user_info(event: events.NewMessage.Event):
     try:
         msg = await event.message.get_reply_message()
+        try:
+            sender_name = f'{msg.sender.title}'
+        except:
+            sender_name = f'{msg.sender.first_name} {msg.sender.last_name}'
+
         reply_text = f'┌ Scan info:\n'\
                      f'├ Username: @{msg.sender.username}\n'\
                      f'├ User id: {msg.sender.id}\n'\
-                     f'├ Full name: {msg.sender.first_name} {msg.sender.last_name}\n'\
+                     f'├ Full name: {sender_name}\n'\
                      f'├ Chat id: {event.chat_id}\n'\
                      f'└ Message id: {event._message_id}'
 
