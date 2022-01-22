@@ -2,7 +2,6 @@ import os, sys, time, datetime, random
 from gtts import gTTS
 
 
-
 def try_delete(filename):
     try:
         print(f'removing {filename}')

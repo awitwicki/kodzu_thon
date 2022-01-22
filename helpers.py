@@ -73,7 +73,7 @@ async def get_raw_temp():
 
     try:
         # declare the client. format defaults to metric system (celcius, km/h, etc.)
-        client = python_weather.Client(format=python_weather.IMPERIAL)
+        client = python_weather.Client(format=python_weather.METRIC)
 
         # fetch a weather forecast from a city
         weather = await client.find(city_name)

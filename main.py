@@ -148,7 +148,7 @@ async def handler(event: events.NewMessage.Event):
 @client.on(events.NewMessage(pattern='^year$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
-        text = "2021 year progress:\n"
+        text = "Year progress:\n"
         text += helpers.get_year_progress(30)
         await event.edit(f'`{text}`')
 
