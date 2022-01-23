@@ -9,3 +9,4 @@ services:
     - .env
     container_name: kodzuthon-container
     network_mode: host
+    restart: always
