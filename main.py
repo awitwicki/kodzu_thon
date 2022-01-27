@@ -24,7 +24,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.0.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.0.2`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -217,7 +217,6 @@ async def handler(event: events.NewMessage.Event):
             chat_id = chat.id
             user_id = msg.sender.id
             sender: User = await event.get_sender()
-            print(sender.username)
 
             helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
         except:
