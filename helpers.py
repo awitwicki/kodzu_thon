@@ -8,8 +8,9 @@ import random
 
 from googletrans import Translator
 from googlesearch import search
-from matplotlib import pyplot as plt
-import matplotlib.dates as mdates
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.io as pio
 import python_weather
 from telethon import events
 
@@ -161,7 +162,7 @@ def get_life_progress():
     return yr
 
 
-def get_new_cases(country = 'ukraine'):
+def get_new_cases(country):
     try:
         url = urllib.request.urlopen(f'https://api.covid19api.com/dayone/country/{country}/status/confirmed/live')
         output = url.read().decode('utf-8')
@@ -174,6 +175,11 @@ def get_new_cases(country = 'ukraine'):
         #datetime format => '2020-03-27T00:00:00Z'
         days = [ datetime.datetime.strptime(f['Date'], '%Y-%m-%dT%H:%M:%SZ') for f in raw_api_dict]
 
+        # Remove todays day because its always zeros
+        days = days[:-1]
+        cases = cases[:-1]
+
+        # Take last 2 months
         fr = 60
         days = days[-fr:]
         cases = cases[-fr:]
@@ -184,32 +190,31 @@ def get_new_cases(country = 'ukraine'):
 
 
 def covid_graph():
-    ukraine_days, ukraine_cases = get_new_cases()
+    ukraine_days, ukraine_cases = get_new_cases(country='ukraine')
     poland_days, poland_cases = get_new_cases(country='poland')
     belarus_days, belarus_cases = get_new_cases(country='belarus')
-    czech_days, czech_cases = get_new_cases(country='czech-republic')
 
-    # make permillion
+    # Calculate per population
     ukraine_cases = [case / 41.98e6 * 1e6 for case in ukraine_cases]
     poland_cases = [case / 37.97e6 * 1e6 for case in poland_cases]
     belarus_cases = [case / 9.4e6 * 1e6 for case in belarus_cases]
-    czech_cases = [case / 10.6e6 * 1e6 for case in czech_cases]
 
-    fig, ax = plt.subplots()
-    ax.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
-    ax.plot(poland_days, poland_cases, color = 'gold')
-    ax.plot(czech_days, czech_cases, color = 'red',  alpha = 0.5)
-    ax.plot(belarus_days, belarus_cases, color = 'cornflowerblue')
-    ax.legend(('Ukraine', 'Poland', 'Czech', 'Belarus'), loc='upper left')
-    # rotate and align the tick labels so they look better
-    fig.autofmt_xdate()
-    # plt.rc('grid', linestyle=".", color='black')
-    ax.grid(linestyle = '--')
-    ax.set_title('Covid new cases trends per population')
+    # Make chart
+    pio.templates.default = "plotly_dark"
+    fig = go.Figure()
 
-    fname = 'img/' + str(uuid.uuid4()) + '.png'
-    fig.savefig(fname)
-    return fname
+    fig.add_trace(go.Scatter(x=belarus_days, y=belarus_cases,mode='lines+markers', name='Belarus'))
+    fig.add_trace(go.Scatter(x=poland_days, y=poland_cases,mode='lines+markers',name='Poland'))
+    fig.add_trace(go.Scatter(x=ukraine_days, y=ukraine_cases,mode='lines+markers',name='Ukraine'))
+
+    fig.update_layout(title='Covid new cases trends per population',
+                    yaxis_title='New cases per population')
+
+    # Save to image
+    image_path = 'img/' + str(uuid.uuid4()) + '.png'
+    fig.write_image(image_path)
+    print(f'Image saved to {image_path}')
+    return image_path
 
 
 def get_sat_img():

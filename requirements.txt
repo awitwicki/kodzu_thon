@@ -1,8 +1,11 @@
-numpy
-matplotlib
 asyncio
-gtts
-Telethon
-python-weather
 googletrans==4.0.0-rc1
 googlesearch-python
+gtts
+kaleido
+Telethon
+pandas
+python-weather
+plotly
+nbformat
+numpy
