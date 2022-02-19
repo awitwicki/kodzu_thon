@@ -1,3 +1,7 @@
+from __future__ import print_function
+from logging import exception
+
+import sys
 import os
 import datetime
 import requests
@@ -13,13 +17,14 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import python_weather
 from telethon import events
+import yfinance as yf
 
 city_name = os.environ.get('TELETHON_CITY', 'Odessa')
 
 # create folders
 if not os.path.exists('img'):
     os.makedirs('img')
-    print(f"Created dir /img")
+    print(f"Created dir /img", file=sys.stderr)
 
 symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍👨‍👦👨‍👨‍👦‍👦'
 
@@ -275,6 +280,10 @@ def translate_text(msg_text, dest = 'ru', silent_mode = False) -> str:
 def google_search(text: str) -> str:
     try:
         result = search(text, num_results=1)
+
+        # Fix bug for python 3.7
+        result = list(result)
+
         result = result[0].replace('https://','').replace('http://','')
         return result
     except Exception as e:
@@ -301,3 +310,87 @@ async def build_user_info(event: events.NewMessage.Event):
     except Exception as e:
         print(e)
         return f'ERROR!\n\n{e}'
+
+
+# Finances
+def get_ticker_info(ticker):
+    # ticker = yf.Ticker(ticker_name)
+    return ticker.info
+
+
+def get_ticker_data(ticker):
+    ticker_info = f'' \
+        f"**{ticker['symbol']}**\n" \
+        f"[{ticker['shortName']}]({ticker['website']})\n" \
+        f"\n" \
+        f"Market price: **{ticker['regularMarketPrice']}$**"
+
+    return ticker_info
+
+
+def get_ticker_history(ticker):
+    hist = ticker.history(period="1mo", interval="30m")
+    hist = hist.reset_index()
+    # print(hist.to_string(index=None), file=sys.stderr)
+    return hist
+
+
+def get_ticker_growth(ticker_history):
+    growth_dollar = ticker_history.iloc[-1].Close - ticker_history.iloc[0].Close
+    growth_percent = (growth_dollar / ticker_history.iloc[0].Close) * 100
+
+    return growth_dollar, growth_percent
+
+
+def get_ticker_recommendations(ticker):
+    from datetime import datetime
+    label_text = '**Recommendations:**\n'
+
+    df = ticker.recommendations
+    df = df.reset_index()
+    df['Date'] = df['Date'].apply(lambda x: datetime.strftime(x, '%d/%m/%Y'))
+    df = df.tail(5)
+    df = df.drop(columns=['From Grade', 'Action'])
+    # df = df[['To Grade', 'Date', 'Firm']]
+    # print(df.to_string(index=None))
+    recommendations = df.to_string(index=None)
+
+    # Transform to monospace
+    recommendations = ''.join([f'`{line}`\n' for line in recommendations.split('\n')])
+
+    return label_text + recommendations
+
+
+def make_ticker_plot(ticker_history, ticker_name):
+    pio.templates.default = "plotly_dark"
+
+    fig = px.line(ticker_history, x="Datetime", y="Close", title=ticker_name)
+    # fig.update_layout(title=ticker_name)
+    fig.update_layout(
+        title=ticker_name,
+        xaxis_title="",
+        yaxis_title="Market price USD"
+    )
+
+    # Save image
+    image_path = 'img/' + str(uuid.uuid4()) + '.png'
+    fig.write_image(image_path)
+    print(f'Image saved to {image_path}')
+    return image_path
+
+
+def make_ticker_report(ticker_name):
+    ticker = yf.Ticker(ticker_name)
+    ticker_info = get_ticker_info(ticker)
+    ticker_name = ticker_info['symbol']
+
+    ticker_main_info = get_ticker_data(ticker_info)
+
+    ticker_history = get_ticker_history(ticker)
+    ticker_history_image_path = make_ticker_plot(ticker_history, ticker_name)
+
+    ticker_growth_dollar, ticker_growth_percent = get_ticker_growth(ticker_history)
+
+    ticker_recommendations = get_ticker_recommendations(ticker)
+
+    return ticker_main_info + f' {ticker_growth_percent:.2f}% ({ticker_growth_dollar:.2f}$)' + '\n\n' + ticker_recommendations, ticker_history_image_path

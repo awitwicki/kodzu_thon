@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from telethon import TelegramClient, events, types, utils
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
@@ -7,6 +9,7 @@ import time
 
 import speech
 import os
+import sys
 import helpers
 import asyncio
 import datetime
@@ -24,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.1.0`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.2.0`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -45,6 +48,7 @@ async def help(event: events.NewMessage.Event):
         '`!a {text or [reply]}` - generate speech,\n' \
         '`!v {text or [reply]}` - video speech,\n' \
         '`!d {text or [reply]}` - demon speech,\n' \
+        '`!yf {ticker name}` - ticker report,\n' \
         '`btc` - bitcoin stock price.'
 
     await event.edit(reply_text)
@@ -399,6 +403,24 @@ async def handler(event: events.NewMessage.Event):
 
     except Exception as e:
         print(e)
+
+
+# Ticker info report
+@client.on(events.NewMessage(pattern='^yf', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        await event.edit("Loading...")
+        
+        ticker_name = event.message.text.replace('yf', '').strip()
+        text, img_name = helpers.make_ticker_report(ticker_name)
+
+        await event.delete()
+        await client.send_file(chat, img_name, caption=text)
+
+    except Exception as e:
+        await event.edit('Fail')
+        print(e, file=sys.stderr)
 
 
 #update bio
