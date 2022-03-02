@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.2.0`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.3.0`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -428,7 +428,7 @@ async def update_bio():
     while True:
         new_about = helpers.get_year_progress()
         raw_temp = await helpers.get_raw_temp()
-        new_lastname = helpers.get_temp(raw_temp)
+        new_lastname = f'{helpers.two_hundred_count():.2f}'
 
         print(f'Update info for {new_lastname} - {new_about}')
         await client(UpdateProfileRequest(about=new_about))

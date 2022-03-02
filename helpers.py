@@ -394,3 +394,19 @@ def make_ticker_report(ticker_name):
     ticker_recommendations = get_ticker_recommendations(ticker)
 
     return ticker_main_info + f' {ticker_growth_percent:.2f}% ({ticker_growth_dollar:.2f}$)' + '\n\n' + ticker_recommendations, ticker_history_image_path
+
+
+def two_hundred_count():
+    import datetime
+    from datetime import timedelta
+
+    def timedelta_percentage(input_datetime):
+        TOTAL_DAY_SECS = 86400.0
+        d = input_datetime - datetime.datetime.combine(input_datetime.date(), datetime.time())
+        return d.total_seconds() / TOTAL_DAY_SECS
+
+    days = 8
+    last_value = 9000
+    average = last_value / days
+    day_percent = average * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
+    return last_value + day_percent
