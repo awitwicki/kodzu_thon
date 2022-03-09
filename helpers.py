@@ -405,8 +405,8 @@ def two_hundred_count():
         d = input_datetime - datetime.datetime.combine(input_datetime.date(), datetime.time())
         return d.total_seconds() / TOTAL_DAY_SECS
 
-    days = 8
-    last_value = 9000
+    days = 14
+    last_value = 12000
     average = last_value / days
     day_percent = average * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
     return last_value + day_percent
