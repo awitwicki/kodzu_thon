@@ -265,7 +265,7 @@ def break_text(msg_text):
     return msg_text
 
 
-def translate_text(msg_text, dest = 'ua', silent_mode = False) -> str:
+def translate_text(msg_text, dest = 'uk', silent_mode = False) -> str:
     try:
         translator = Translator()
         result = translator.translate(msg_text, dest=dest)
