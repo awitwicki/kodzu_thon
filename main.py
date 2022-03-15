@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.3.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.3.2`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -378,7 +378,7 @@ async def handler(event: events.NewMessage.Event):
 
 
 #background voice note
-@client.on(events.NewMessage(outgoing=True))
+@client.on(events.NewMessage(outgoing=True, forwards=False))
 async def handler(event: events.NewMessage.Event):
     if event.voice:
         chat = await event.get_chat()
