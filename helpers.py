@@ -405,8 +405,16 @@ def two_hundred_count():
         d = input_datetime - datetime.datetime.combine(input_datetime.date(), datetime.time())
         return d.total_seconds() / TOTAL_DAY_SECS
 
-    days = 14
-    last_value = 12000
-    average = last_value / days
-    day_percent = average * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
-    return last_value + day_percent
+    started = datetime.datetime(2022, 2, 24)
+    last_date = datetime.datetime(2022, 4, 12)
+
+    total_calculated_days = (last_date - started).days
+    last_value = 19600
+
+    days_delta = (datetime.datetime.utcnow() - last_date).days
+    average = last_value / total_calculated_days
+
+    today_value = average * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
+    result = last_value + today_value + (average * days_delta) 
+
+    return result
