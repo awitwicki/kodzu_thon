@@ -1,6 +1,14 @@
 # kodzu_thon
 
-Telethon implementarion
+
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Tests](https://img.shields.io/github/languages/top/awitwicki/kodzu_thon)
+![Tests](https://img.shields.io/badge/python%20version-3.7-blue)
+![Tests](https://img.shields.io/github/forks/awitwicki/kodzu_thon)
+![Tests](https://img.shields.io/github/stars/awitwicki/kodzu_thon)
+![Tests](https://img.shields.io/github/last-commit/awitwicki/kodzu_thon)
+
+## Telethon implementation userbot
 
 ## Installing
 
