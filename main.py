@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.3.3`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.3.4`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -196,7 +196,7 @@ async def handler(event: events.NewMessage.Event):
 
     if event.is_private:
         if event.voice:
-            reply_text = 'Голосовое сообщение не доставлено так как пользователь заблокировал эту опцию. Это сообщение написано автоматически.'
+            reply_text = 'Голосове повідомлення не доставлено, бо користувач заблокував цю опцію. Це повідомлення надіслано автоматично.'
             await client.send_message(chat, reply_text, reply_to = event.message.id)
 
     if event.is_group:
