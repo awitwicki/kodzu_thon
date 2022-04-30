@@ -3,10 +3,10 @@ googletrans==4.0.0-rc1
 googlesearch-python
 gtts
 kaleido
-newthon
-pandas==1.2.4
+numpy
+pandas
 python-weather
 plotly
 nbformat
-numpy
+newthon
 yfinance
