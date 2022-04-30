@@ -3,7 +3,7 @@ googletrans==4.0.0-rc1
 googlesearch-python
 gtts
 kaleido
-Telethon
+newthon
 pandas==1.2.4
 python-weather
 plotly

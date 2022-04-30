@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.3.4`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.4.0`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -49,9 +49,56 @@ async def help(event: events.NewMessage.Event):
         '`!v {text or [reply]}` - video speech,\n' \
         '`!d {text or [reply]}` - demon speech,\n' \
         '`!yf {ticker name}` - ticker report,\n' \
+        '`!lk {emoji} {count} [reply]` - reaction messages attack,\n' \
         '`btc` - bitcoin stock price.'
 
     await event.edit(reply_text)
+
+# Like all user messages
+@client.on(events.NewMessage(pattern='^!lk', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        reply_to_message = await event.get_reply_message()
+
+        if not reply_to_message:
+            await event.delete()
+            return
+
+        params = event.message.text.split()
+        emoji = params[1]
+        count = int(params[2])
+
+        avaliable_emojis = "💩👍👎🔥🥰👏😁🤔🤯🤬😱😢🤩🤮🎉❤️"
+
+        if emoji not in avaliable_emojis :
+            await event.edit(avaliable_emojis)
+            return
+
+        await event.edit("...")
+        i = 0
+
+        async for message in client.iter_messages(chat, from_user=reply_to_message.sender):
+            try:
+                reactions = message.reactions
+                if reactions and any(x.reaction == emoji for x in reactions.results):
+                    continue
+
+                await client.send_reaction(chat, message, emoji)
+
+                if i > count:
+                    break
+                i += 1
+
+            except Exception as e:
+                print(e, file=sys.stderr)
+
+        await event.delete()
+        # await event.edit(f"Накидано {count} {emoji}")
+
+    except Exception as e:
+        await event.edit('Fail')
+        print(e, file=sys.stderr)
 
 
 #userId
