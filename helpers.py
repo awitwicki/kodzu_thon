@@ -406,10 +406,10 @@ def two_hundred_count():
         return d.total_seconds() / TOTAL_DAY_SECS
 
     started = datetime.datetime(2022, 2, 24)
-    last_date = datetime.datetime(2022, 4, 12)
+    last_date = datetime.datetime(2022, 5, 30)
 
     total_calculated_days = (last_date - started).days
-    last_value = 19600
+    last_value = 30350
 
     days_delta = (datetime.datetime.utcnow() - last_date).days
     average = last_value / total_calculated_days
