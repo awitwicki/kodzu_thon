@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.4.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.4.2`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -174,7 +174,7 @@ async def handler(event: events.NewMessage.Event):
             pass
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #weather
@@ -193,7 +193,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(otm)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #year progress
@@ -205,7 +205,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(f'`{text}`')
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #covid
@@ -220,7 +220,7 @@ async def handler(event: events.NewMessage.Event):
         await client.send_file(chat, img_name, caption=cov)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #satelite image
@@ -234,7 +234,7 @@ async def handler(event: events.NewMessage.Event):
         await client.send_file(chat, img_name)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #autoresponder
@@ -309,7 +309,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(f'Muted for {count} {time_flags_dict[time_type][1]}')
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #🦔🍎
@@ -339,7 +339,7 @@ async def handler(event: events.NewMessage.Event):
         await event.delete()
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #print citate
@@ -353,7 +353,7 @@ async def handler(event: events.NewMessage.Event):
             await asyncio.sleep(.1)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #voice note
@@ -378,7 +378,7 @@ async def handler(event: events.NewMessage.Event):
             speech.try_delete(voicename)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #video note
@@ -402,7 +402,7 @@ async def handler(event: events.NewMessage.Event):
             speech.try_delete(video_file)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #demon voice note
@@ -422,7 +422,7 @@ async def handler(event: events.NewMessage.Event):
             speech.try_delete(voicename)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 #background voice note
@@ -450,7 +450,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(btc_price)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 # Ticker info report
@@ -459,7 +459,7 @@ async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
         await event.edit("Loading...")
-        
+
         ticker_name = event.message.text.replace('yf', '').strip()
         text, img_name = helpers.make_ticker_report(ticker_name)
 
