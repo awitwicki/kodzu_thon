@@ -27,7 +27,7 @@ client.start()
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.4.0`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.4.1`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -50,7 +50,8 @@ async def help(event: events.NewMessage.Event):
         '`!d {text or [reply]}` - demon speech,\n' \
         '`!yf {ticker name}` - ticker report,\n' \
         '`!lk {emoji} {count} [reply]` - reaction messages attack,\n' \
-        '`btc` - bitcoin stock price.'
+        '`btc` - bitcoin stock price.\n\n' \
+        '[github](https://github.com/awitwicki/kodzu_thon)'
 
     await event.edit(reply_text)
 
