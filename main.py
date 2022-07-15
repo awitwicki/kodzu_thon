@@ -23,11 +23,12 @@ api_hash = os.environ['TELETHON_API_HASH']
 client = TelegramClient('session_name', api_id, api_hash)
 client.start()
 
+messages_cache = {}
 
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.4.3`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.5`\n\n' \
         '`scan [reply]` - scan message,\n' \
         '`scans [reply]` - silently scan message,\n' \
         '`gum [reply]` - insert emojis,\n' \
@@ -237,7 +238,27 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#autoresponder
+# Removed message
+@client.on(events.MessageDeleted())
+async def handler(event: events.MessageDeleted.Event):
+    try:
+        chat_id = int(f'{event.chat_id}'[4:])
+        _message_id = event._message_id
+
+        # Try find message in cache
+        chat = messages_cache.get(chat_id)
+        if chat:
+            msg = chat['messages'].get(_message_id)
+            if msg:
+                message_text = msg["text"]
+                print(f'deleted message {_message_id} in chat {chat_id}, user: {msg["sender_id"]} {msg["sender_name"]}, text: {msg["text"]}', file=sys.stderr)
+                helpers.influx_query(f'bots,botname=kodzuthon,chatname={msg["chat_title"]},chat_id={chat_id},user_id={msg["sender_id"]},user_name={msg["sender_name"]},message_type=deleted_text_message deleted_message_text=\"{message_text}\"')
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+
+
+# Autoresponder
 @client.on(events.NewMessage(incoming=True))
 async def handler(event: events.NewMessage.Event):
     chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
@@ -251,7 +272,7 @@ async def handler(event: events.NewMessage.Event):
         try:
             msg = event.message
             chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
-            
+
             user_name = ''
             if msg.sender.username:
                 user_name += '@' + msg.sender.username
@@ -271,8 +292,35 @@ async def handler(event: events.NewMessage.Event):
             sender: User = await event.get_sender()
 
             helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
-        except:
-            pass
+
+            # Add to messages cache
+            # If sender is not bot
+            if msg.text and not msg.sender.bot:
+                cached_message = {
+                    'message_id': msg.id,
+                    'chat_id': chat_id,
+                    'sender_id': user_id,
+                    'sender_name': user_name,
+                    'chat_title': chat_title,
+                    'text': msg.text.replace('"', '\\"')
+                }
+
+                cached_chat = {
+                    'chat_id': chat_id,
+                    'chat_title': user_name if event.is_private else chat_title,
+                    'messages': {}
+                }
+
+                # Create new chat entity
+                if not chat_id in messages_cache.keys():
+                    messages_cache[chat_id] = cached_chat
+
+                # Append message
+                messages_cache[chat_id]['messages'][msg.id] = cached_message
+
+        except Exception as e:
+            print(e, file=sys.stderr)
+
 
 #mute user
 @client.on(events.NewMessage(pattern=r'^!m', outgoing=True))
