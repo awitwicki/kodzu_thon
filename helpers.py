@@ -9,6 +9,7 @@ import urllib
 import json
 import uuid
 import random
+from time import sleep
 
 from googletrans import Translator
 from googlesearch import search
@@ -18,7 +19,8 @@ import plotly.io as pio
 import python_weather
 
 from telethon import TelegramClient, events
-from telethon.tl.types import ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator
+from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.types import ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
 from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
 
 import yfinance as yf
@@ -347,6 +349,41 @@ async def build_message_chat_info(event: events.NewMessage.Event, client: Telegr
     except Exception as e:
         print(e)
         return f'ERROR!\n\n{e}'
+
+
+async def scrap_chat_users(event: events.NewMessage.Event, client: TelegramClient):
+    try:
+        chat = await event.get_chat()
+        path = f'{chat.title}_{chat.id}_members.csv'
+
+        offset = 0
+        limit = 100
+        all_participants = []
+
+        while True:
+            participants = await client(GetParticipantsRequest(chat, ChannelParticipantsSearch(''), offset, limit, hash=0))
+            if not participants.users:
+                break
+            all_participants.extend(participants.users)
+            offset += len(participants.users)
+            sleep(1)
+
+        with open(path, 'w', encoding='utf8') as f:
+            f.write('user_id,user_name')
+
+            for participant in all_participants:
+                try:
+                    participant_name = f'{participant.id},{participant.title}'
+                except:
+                    participant_name = f'{participant.id},{participant.first_name} {participant.last_name}'
+
+                f.write(f'{participant_name}\n')
+
+        return True, path
+
+    except Exception as e:
+        print(e)
+        return False, f'ERROR!\n\n{e}'
 
 
 # Finances

@@ -28,9 +28,10 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.6`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.7`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
+        '`scraps (chat)` - silently scrap all members to .csv,\n' \
         '`gum [reply]` - insert emojis,\n' \
         '`cum [reply]` - khaleese message,\n' \
         '`tr [reply]` - translate message,\n' \
@@ -117,6 +118,18 @@ async def handler(event: events.NewMessage.Event):
     reply_text = await helpers.build_message_chat_info(event, client)
     await event.edit(reply_text)
 
+
+@client.on(events.NewMessage(pattern='^scraps$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    await event.delete()
+    msg = await client.send_message('me', 'Scrapping...')
+    is_success, csv_path_or_error = await helpers.scrap_chat_users(event, client)
+    if is_success:
+        await msg.delete()
+        await client.send_file('me', csv_path_or_error, caption=csv_path_or_error)
+        os.remove('csv_path')
+    else:
+        await msg.edit(csv_path_or_error)
 
 #break message
 @client.on(events.NewMessage(pattern='^gum$', outgoing=True))
