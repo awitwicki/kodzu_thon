@@ -28,9 +28,9 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.5`\n\n' \
-        '`scan [reply]` - scan message,\n' \
-        '`scans [reply]` - silently scan message,\n' \
+    reply_text = f'**Kodzuthon help** `v1.6`\n\n' \
+        '`scan [optional reply]` - scan message or chat,\n' \
+        '`scans [optional reply]` - silently scan message or chat,\n' \
         '`gum [reply]` - insert emojis,\n' \
         '`cum [reply]` - khaleese message,\n' \
         '`tr [reply]` - translate message,\n' \
@@ -106,15 +106,15 @@ async def handler(event: events.NewMessage.Event):
 #userId
 @client.on(events.NewMessage(pattern='^scans$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
-    reply_text = await helpers.build_user_info(event)
-    await client.send_message('me', reply_text)
+    reply_text = await helpers.build_message_chat_info(event, client)
     await event.delete()
+    await client.send_message('me', reply_text)
 
 
 #chatid
 @client.on(events.NewMessage(pattern='^scan$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
-    reply_text = await helpers.build_user_info(event)
+    reply_text = await helpers.build_message_chat_info(event, client)
     await event.edit(reply_text)
 
 

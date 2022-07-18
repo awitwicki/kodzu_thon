@@ -16,7 +16,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 import python_weather
-from telethon import events
+
+from telethon import TelegramClient, events
+from telethon.tl.types import ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator
+from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
+
 import yfinance as yf
 
 city_name = os.environ.get('TELETHON_CITY', 'Odessa')
@@ -290,20 +294,53 @@ def google_search(text: str) -> str:
         return str(e)
 
 
-async def build_user_info(event: events.NewMessage.Event):
+async def build_message_chat_info(event: events.NewMessage.Event, client: TelegramClient):
     try:
-        msg = await event.message.get_reply_message()
-        try:
-            sender_name = f'{msg.sender.title}'
-        except:
-            sender_name = f'{msg.sender.first_name} {msg.sender.last_name}'
+        reply_msg = await event.message.get_reply_message()
 
-        reply_text = f'┌ Scan info:\n'\
-                     f'├ Username: @{msg.sender.username}\n'\
-                     f'├ User id: {msg.sender.id}\n'\
-                     f'├ Full name: {sender_name}\n'\
-                     f'├ Chat id: {event.chat_id}\n'\
-                     f'└ Message id: {event._message_id}'
+        # If reply_msg then scan sender
+        if reply_msg:
+            try:
+                sender_name = f'{reply_msg.sender.title}'
+            except:
+                sender_name = f'{reply_msg.sender.first_name} {reply_msg.sender.last_name}'
+
+            reply_text = f'┌ Scan info:\n'\
+                         f'├ Username: @{reply_msg.sender.username}\n'\
+                         f'├ User id: {reply_msg.sender.id}\n'\
+                         f'├ Full name: {sender_name}\n'\
+                         f'├ Chat id: {event.chat_id}\n'\
+                         f'└ Message id: {event._message_id}'
+        # Else scan chat
+        else:
+            chat = await event.get_chat()
+
+            reply_text = f'┌ Scan info:\n'
+
+            try:
+                if chat.username:
+                    reply_text +=  f'├ Chat username: @{chat.username}\n'
+            except:
+                pass
+
+            reply_text += f'├ Chat name: {chat.title}\n'\
+                    f'├ Chat id: {chat.id}\n'
+
+            try:
+                admins = await client.get_participants(chat, filter=ChannelParticipantsAdmins)
+                creator = [admin for admin in admins if isinstance(admin.participant, ChatParticipantCreator) or isinstance(admin.participant, ChannelParticipantCreator)][0]
+
+                reply_text +=  f'├ Owner Username: {"@" + creator.username if creator.username else "-"}\n'\
+                            f'├ Owner id: {creator.id}\n'
+
+                try:
+                    creator_name = f'{creator.title}'
+                except:
+                    creator_name = f'{creator.first_name} {creator.last_name}'
+
+                reply_text += f'└ Owner Full name: {creator_name}'
+            except:
+                reply_text += f'└ Owner not found'
 
         return reply_text
 
