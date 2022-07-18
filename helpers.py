@@ -16,6 +16,7 @@ from googlesearch import search
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+pio.kaleido.scope.chromium_args += ("--single-process",)
 import python_weather
 
 from telethon import TelegramClient, events
