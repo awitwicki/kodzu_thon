@@ -2,11 +2,9 @@ asyncio
 googletrans==4.0.0-rc1
 googlesearch-python
 gtts
-kaleido
 newthon
 numpy
+matplotlib
 pandas
 python-weather
-plotly
-nbformat
 yfinance

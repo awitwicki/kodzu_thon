@@ -13,10 +13,9 @@ from time import sleep
 
 from googletrans import Translator
 from googlesearch import search
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.io as pio
-pio.kaleido.scope.chromium_args += ("--single-process",)
+
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
 import python_weather
 
 from telethon import TelegramClient, events
@@ -204,29 +203,25 @@ def get_new_cases(country):
 def covid_graph():
     ukraine_days, ukraine_cases = get_new_cases(country='ukraine')
     poland_days, poland_cases = get_new_cases(country='poland')
-    belarus_days, belarus_cases = get_new_cases(country='belarus')
 
     # Calculate per population
     ukraine_cases = [case / 41.98e6 * 1e6 for case in ukraine_cases]
     poland_cases = [case / 37.97e6 * 1e6 for case in poland_cases]
-    belarus_cases = [case / 9.4e6 * 1e6 for case in belarus_cases]
 
     # Make chart
-    pio.templates.default = "plotly_dark"
-    fig = go.Figure()
+    fig, ax = plt.subplots()
+    ax.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
+    ax.plot(poland_days, poland_cases, color = 'gold')
+    ax.legend(('Ukraine', 'Poland'), loc='upper left')
+    # rotate and align the tick labels so they look better
+    fig.autofmt_xdate()
+    # plt.rc('grid', linestyle=".", color='black')
+    ax.grid(linestyle = '--')
+    ax.set_title('Covid new cases trends per population')
 
-    fig.add_trace(go.Scatter(x=belarus_days, y=belarus_cases,mode='lines+markers', name='Belarus'))
-    fig.add_trace(go.Scatter(x=poland_days, y=poland_cases,mode='lines+markers',name='Poland'))
-    fig.add_trace(go.Scatter(x=ukraine_days, y=ukraine_cases,mode='lines+markers',name='Ukraine'))
-
-    fig.update_layout(title='Covid new cases trends per population',
-                    yaxis_title='New cases per population')
-
-    # Save to image
-    image_path = 'img/' + str(uuid.uuid4()) + '.png'
-    fig.write_image(image_path)
-    print(f'Image saved to {image_path}')
-    return image_path
+    fname = 'img/' + str(uuid.uuid4()) + '.png'
+    fig.savefig(fname)
+    return fname
 
 
 def get_sat_img():
@@ -437,20 +432,17 @@ def get_ticker_recommendations(ticker):
 
 
 def make_ticker_plot(ticker_history, ticker_name):
-    pio.templates.default = "plotly_dark"
-
-    fig = px.line(ticker_history, x="Datetime", y="Close", title=ticker_name)
-    # fig.update_layout(title=ticker_name)
-    fig.update_layout(
-        title=ticker_name,
-        xaxis_title="",
-        yaxis_title="Market price USD"
-    )
+    fig, ax = plt.subplots()
+    ax.plot(ticker_history['Datetime'].values, ticker_history['Close'].values)
+    fig.autofmt_xdate()
+    ax.set_ylabel('Close price USD')
+    ax.grid(linestyle = '--')
+    ax.set_title(ticker_name, loc='left')
 
     # Save image
     image_path = 'img/' + str(uuid.uuid4()) + '.png'
-    fig.write_image(image_path)
-    print(f'Image saved to {image_path}')
+    fig.savefig(image_path)
+    print(f'Image saved to {image_path}', file=sys.stderr)
     return image_path
 
 
