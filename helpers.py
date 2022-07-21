@@ -16,6 +16,9 @@ from googlesearch import search
 
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
+from qbstyles import mpl_style
+mpl_style(dark=True)
+
 import python_weather
 
 from telethon import TelegramClient, events
@@ -209,19 +212,22 @@ def covid_graph():
     poland_cases = [case / 37.97e6 * 1e6 for case in poland_cases]
 
     # Make chart
-    fig, ax = plt.subplots()
-    ax.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
-    ax.plot(poland_days, poland_cases, color = 'gold')
-    ax.legend(('Ukraine', 'Poland'), loc='upper left')
-    # rotate and align the tick labels so they look better
-    fig.autofmt_xdate()
-    # plt.rc('grid', linestyle=".", color='black')
-    ax.grid(linestyle = '--')
-    ax.set_title('Covid new cases trends per population')
+    fig = plt.figure()
+    plt.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
+    plt.plot(poland_days, poland_cases, color = 'gold')
 
-    fname = 'img/' + str(uuid.uuid4()) + '.png'
-    fig.savefig(fname)
-    return fname
+    plt.legend(('Ukraine', 'Poland'), loc='upper left')
+
+    plt.title(f"Covid new cases trends per population", loc='left')
+
+    fig.autofmt_xdate()
+    plt.grid(linestyle = '--', linewidth = 0.7)
+
+
+    image_path = 'img/' + str(uuid.uuid4()) + '.png'
+    plt.savefig(image_path, bbox_inches='tight')
+    print(f'Image saved to {image_path}', file=sys.stderr)
+    return image_path
 
 
 def get_sat_img():
@@ -421,8 +427,6 @@ def get_ticker_recommendations(ticker):
     df['Date'] = df['Date'].apply(lambda x: datetime.strftime(x, '%d/%m/%Y'))
     df = df.tail(5)
     df = df.drop(columns=['From Grade', 'Action'])
-    # df = df[['To Grade', 'Date', 'Firm']]
-    # print(df.to_string(index=None))
     recommendations = df.to_string(index=None)
 
     # Transform to monospace
@@ -432,16 +436,18 @@ def get_ticker_recommendations(ticker):
 
 
 def make_ticker_plot(ticker_history, ticker_name):
-    fig, ax = plt.subplots()
-    ax.plot(ticker_history['Datetime'].values, ticker_history['Close'].values)
+    fig = plt.figure()
+    plt.plot(ticker_history['Datetime'].values, ticker_history['Close'].values)
+
+    plt.title(f"{ticker_name} ticker price", loc='left')
+    plt.ylabel('Close price USD')
+
     fig.autofmt_xdate()
-    ax.set_ylabel('Close price USD')
-    ax.grid(linestyle = '--')
-    ax.set_title(ticker_name, loc='left')
+    plt.grid(linestyle = '--', linewidth = 0.7)
 
     # Save image
     image_path = 'img/' + str(uuid.uuid4()) + '.png'
-    fig.savefig(image_path)
+    plt.savefig(image_path, bbox_inches='tight')
     print(f'Image saved to {image_path}', file=sys.stderr)
     return image_path
 
@@ -485,3 +491,6 @@ def two_hundred_count():
     result = last_value + today_value + (average * days_delta) 
 
     return result
+
+make_ticker_report('meta')
+covid_graph()

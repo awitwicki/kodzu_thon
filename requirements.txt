@@ -7,4 +7,5 @@ numpy
 matplotlib
 pandas
 python-weather
+qbstyles
 yfinance
