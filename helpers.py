@@ -127,15 +127,11 @@ def get_covid():
 
         pl = countries['PL']
         ua = countries['UA']
-        cz = countries['CZ']
-        br = countries['BY']
 
         pl = make_countrystring(pl)
         ua = make_countrystring(ua)
-        cz = make_countrystring(cz)
-        br = make_countrystring(br)
 
-        ret = f'{pl}\n{ua}\n{cz}\n{br}\n\ncovid19api.com'
+        ret = f'{pl}\n{ua}\n\ncovid19api.com'
         return ret
     except:
         return 'Caching in progress...'
@@ -200,7 +196,7 @@ def get_new_cases(country):
 
         return days, cases
     except:
-        return [],[]
+        return [], []
 
 
 def covid_graph():
