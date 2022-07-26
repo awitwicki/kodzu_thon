@@ -28,7 +28,7 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.7.3`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.8`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -51,8 +51,9 @@ async def help(event: events.NewMessage.Event):
         '`!v {text or [reply]}` - video speech,\n' \
         '`!d {text or [reply]}` - demon speech,\n' \
         '`!yf {ticker name}` - ticker report,\n' \
-        '`!lk {emoji} {count} [reply]` - reaction messages attack,\n' \
-        '`btc` - bitcoin stock price.\n\n' \
+        '`curr` - currencies report,\n' \
+        '`btc` - bitcoin stock price.\n' \
+        '`!lk {emoji} {count} [reply]` - reaction messages attack,\n\n' \
         '[github](https://github.com/awitwicki/kodzu_thon)'
 
     await event.edit(reply_text)
@@ -130,6 +131,7 @@ async def handler(event: events.NewMessage.Event):
         os.remove('csv_path')
     else:
         await msg.edit(csv_path_or_error)
+
 
 #break message
 @client.on(events.NewMessage(pattern='^gum$', outgoing=True))
@@ -530,6 +532,25 @@ async def handler(event: events.NewMessage.Event):
     except Exception as e:
         await event.edit('Fail')
         print(e, file=sys.stderr)
+
+
+# Currencies info report
+@client.on(events.NewMessage(pattern='^curr$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        await event.edit("Loading...")
+
+        img_name, text = helpers.make_currency_report()
+
+        text = f'**Currencies for last 30 days:**\n\n{text}'
+
+        await event.delete()
+        await client.send_file(chat, img_name, caption=text)
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+        await event.edit('Fail')
 
 
 #update bio

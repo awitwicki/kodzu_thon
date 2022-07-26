@@ -14,6 +14,8 @@ from time import sleep
 from googletrans import Translator
 from googlesearch import search
 
+import pandas as pd
+
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 from qbstyles import mpl_style
@@ -465,6 +467,78 @@ def make_ticker_report(ticker_name):
     return ticker_main_info + f' {ticker_growth_percent:.2f}% ({ticker_growth_dollar:.2f}$)' + '\n\n' + ticker_recommendations, ticker_history_image_path
 
 
+def make_currency_report():
+    # Prepare data
+    date_now = datetime.datetime.utcnow()
+    start_date = date_now - datetime.timedelta(days = 30)
+    end_date = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+
+    data_EURUSD = yf.download('EURUSD=X', start=start_date, end=end_date)
+    data_USDPLN = yf.download('USDPLN=X', start=start_date, end=end_date)
+    data_USDUAH = yf.download('USDUAH=X', start=start_date, end=end_date)
+
+    # Calculate PLN/UAH currency
+    data_PLNUAH = pd.concat([data_USDPLN.rename(columns={"Close": "Close_usd_pln"}), data_USDUAH], axis=1).rename(columns={"Close": "Close_usd_uah"})
+    data_PLNUAH['Close'] = data_PLNUAH.apply(lambda x: 1/x.Close_usd_pln * x.Close_usd_uah, axis=1)
+
+    # Get old values
+    data_EURUSD_old = data_EURUSD.iloc[0].Close
+    data_USDUAH_old = data_USDUAH.iloc[0].Close
+    data_USDPLN_old = data_USDPLN.iloc[0].Close
+    data_PLNUAH_old = data_PLNUAH.iloc[0].Close
+
+    # Get last actual values
+    data_EURUSD_last = data_EURUSD.iloc[-1].Close
+    data_USDUAH_last = data_USDUAH.iloc[-1].Close
+    data_USDPLN_last = data_USDPLN.iloc[-1].Close
+    data_PLNUAH_last = data_PLNUAH.iloc[-1].Close
+
+    # Calculate delta percent
+    vals = pd.DataFrame()
+    vals = vals.append({'pair_name': 'EUR/USD', 'old_elem': data_EURUSD_old, 'last_elem': data_EURUSD_last}, ignore_index=True)
+    vals = vals.append({'pair_name': 'USD/PLN', 'old_elem': data_USDPLN_old, 'last_elem': data_USDPLN_last}, ignore_index=True)
+    vals = vals.append({'pair_name': 'USD/UAH', 'old_elem': data_USDUAH_old, 'last_elem': data_USDUAH_last}, ignore_index=True)
+    vals = vals.append({'pair_name': 'PLN/UAH', 'old_elem': data_PLNUAH_old, 'last_elem': data_PLNUAH_last}, ignore_index=True)
+
+    vals['delta'] = vals.apply(lambda x: (x.last_elem - x.old_elem), axis=1)
+    vals['delta_percent'] = vals.apply(lambda x: (100 * x.delta / x.old_elem), axis=1)
+
+    # Build percent growth strings
+    build_percent_growth_strings = '\n'.join([f'`{x.pair_name}: {x.last_elem:.2f} ({x.delta_percent:.2f}%)`' for x in vals.iloc])
+
+    # Draw chart
+    def plot_chart(ax, df, title):
+        ax.plot(df.index.values, df['Close'].values)
+        ax.set_title(title)
+        ax.grid(linestyle = '--', linewidth = 0.7)
+
+        # Rotate the x-axis labels so they don't overlap
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=20)
+
+    # Create the figure and subplots
+    fig = plt.figure(figsize=(12,8))
+
+    fig.suptitle('Currencies for last 30 days', fontsize=20)
+
+    # Rename the axes for ease of use
+    ax11 = plt.subplot(2, 2, 1)
+    ax12 = plt.subplot(2, 2, 2)
+    ax21 = plt.subplot(2, 2, 3)
+    ax22 = plt.subplot(2, 2, 4)
+
+    plot_chart(ax11, data_USDPLN, 'USD/PLN')
+    plot_chart(ax12, data_EURUSD, 'EUR/USD')
+    plot_chart(ax21, data_USDUAH, 'USD/UAH')
+    plot_chart(ax22, data_PLNUAH, 'PLN/UAH')
+
+    plt.tight_layout()
+
+    # Save image
+    image_path = f'img/{uuid.uuid4()}.png'
+    plt.savefig(image_path, bbox_inches='tight')
+    return image_path, build_percent_growth_strings
+
+
 def two_hundred_count():
     import datetime
     from datetime import timedelta
@@ -487,6 +561,3 @@ def two_hundred_count():
     result = last_value + today_value + (average * days_delta) 
 
     return result
-
-make_ticker_report('meta')
-covid_graph()
