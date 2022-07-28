@@ -16,6 +16,7 @@ from googlesearch import search
 
 import pandas as pd
 
+import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 from qbstyles import mpl_style
@@ -63,6 +64,56 @@ def get_btc():
     price = f'Bitcoint price: {price} USD'
 
     return price
+
+
+def make_crypto_report(currency_name: str ='BTC', days_count: int = 30):
+    now_date = datetime.datetime.now()
+
+    start_date_str = (now_date - datetime.timedelta(days = days_count)).strftime("%Y-%m-%dT%H:%M")
+    end_date_str = now_date.strftime("%Y-%m-%dT%H:%M")
+
+    request_url = 'https://www.coindesk.com/pf/api/v3/content/fetch/chart-api?query={%22end_date%22:%22' \
+        + f'{end_date_str}' \
+        + '%22,%22iso%22:%22' \
+        + f'{currency_name}' \
+        + '%22,%22ohlc%22:false,%22start_date%22:%22' \
+        + f'{start_date_str}' \
+        + '%22}&d=177&_website=coindesk'
+
+    r = requests.get(url=request_url)
+
+    # Extracting data in json format
+    data = r.json()
+
+    # Parse historical data and convert to datetime
+    history = [(datetime.datetime.fromtimestamp(f[0] / 1000), f[1]) for f in data['entries']]
+
+    # Convert to 2d array and split for 2 arrays
+    history = np.array(history)
+    dates = history[:, 0]
+    values = history[:, 1]
+
+    # Create the figure and subplots
+    fig = plt.figure(figsize=(12,8))
+
+    ax = plt.subplot()
+    ax.plot(dates, values)
+    ax.set_title(f'{currency_name} currencies for last {days_count} days', fontsize=20)
+    ax.grid(linestyle = '--', linewidth = 0.7)
+
+    # Rotate the x-axis labels so they don't overlap
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=20)
+    plt.tight_layout()
+
+    # Calculate extra info
+    actual_currency = values[-1]
+    percent_growth = 100 * (values[-1] - values[0]) / values[0]
+
+    # Save image
+    image_path = f'img/{uuid.uuid4()}.png'
+    plt.savefig(image_path, bbox_inches='tight')
+
+    return image_path, actual_currency, percent_growth
 
 
 def get_weather():

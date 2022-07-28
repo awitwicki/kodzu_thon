@@ -28,7 +28,7 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.8`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.9`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -53,6 +53,7 @@ async def help(event: events.NewMessage.Event):
         '`!yf {ticker name}` - ticker report,\n' \
         '`curr` - currencies report,\n' \
         '`btc` - bitcoin stock price.\n' \
+        '`cr {optional btc}` - bitcoin stock report.\n' \
         '`!lk {emoji} {count} [reply]` - reaction messages attack,\n\n' \
         '[github](https://github.com/awitwicki/kodzu_thon)'
 
@@ -513,6 +514,31 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(btc_price)
 
     except Exception as e:
+        print(e, file=sys.stderr)
+
+
+# Crypto report
+@client.on(events.NewMessage(pattern='^cr', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        await event.edit("Loading...")
+
+        args = event.message.text.split()
+        if len(args) > 1:
+            currency_name = args[1].upper()
+        else:
+            currency_name = 'BTC'
+
+        img_name, actual_currency, percent_growth = helpers.make_crypto_report(currency_name)
+
+        text = f'**{currency_name}** `{actual_currency:.2f} USD ({percent_growth:.2f}%)`'
+
+        await event.delete()
+        await client.send_file(chat, img_name, caption=text)
+
+    except Exception as e:
+        await event.edit('Fail')
         print(e, file=sys.stderr)
 
 
