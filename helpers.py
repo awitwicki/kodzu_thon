@@ -72,13 +72,14 @@ def make_crypto_report(currency_name: str ='BTC', days_count: int = 30):
     start_date_str = (now_date - datetime.timedelta(days = days_count)).strftime("%Y-%m-%dT%H:%M")
     end_date_str = now_date.strftime("%Y-%m-%dT%H:%M")
 
-    request_url = 'https://www.coindesk.com/pf/api/v3/content/fetch/chart-api?query={%22end_date%22:%22' \
+    # https://www.coindesk.com/price/bitcoin/
+    request_url = 'https://www.coindesk.com/pf/api/v3/content/fetch/chart-api?query={"end_date":"' \
         + f'{end_date_str}' \
-        + '%22,%22iso%22:%22' \
+        + '","iso":"' \
         + f'{currency_name}' \
-        + '%22,%22ohlc%22:false,%22start_date%22:%22' \
+        + '","ohlc":false,"start_date":"' \
         + f'{start_date_str}' \
-        + '%22}&d=177&_website=coindesk'
+        + '"}&d=179&_website=coindesk'
 
     r = requests.get(url=request_url)
 
