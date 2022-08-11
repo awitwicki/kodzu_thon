@@ -28,7 +28,7 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.9.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.10`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -50,6 +50,7 @@ async def help(event: events.NewMessage.Event):
         '`!a {text or [reply]}` - generate speech,\n' \
         '`!v {text or [reply]}` - video speech,\n' \
         '`!d {text or [reply]}` - demon speech,\n' \
+        '`хня [optional reply]` - bredor video,\n' \
         '`!yf {ticker name}` - ticker report,\n' \
         '`curr` - currencies report,\n' \
         '`btc` - bitcoin stock price.\n' \
@@ -464,6 +465,20 @@ async def handler(event: events.NewMessage.Event):
 
             speech.try_delete(voicename)
             speech.try_delete(video_file)
+
+    except Exception as e:
+        print(e, file=sys.stderr)
+
+
+#video "same shit"
+@client.on(events.NewMessage(pattern='^хня$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        await event.delete()
+        async with client.action(chat, 'record-round'):
+            chat = await event.get_chat()
+            await client.send_file(chat, 'media/same.mp4', reply_to=event.message.reply_to_msg_id, video_note=True)
 
     except Exception as e:
         print(e, file=sys.stderr)
