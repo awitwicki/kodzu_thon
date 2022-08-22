@@ -149,9 +149,9 @@ async def handler(event: events.NewMessage.Event):
 
         for district_name in state_dict.keys():
             if state_dict[district_name]:
-                text += f'{district_name} ⚠️'
+                text += f'{district_name} ⚠️\n'
 
-        text += '\n\nair-save.ops.ajax.systems'
+        text += '\nair-save.ops.ajax.systems'
 
         await event.delete()
         await client.send_file(chat, img_name, caption=text, reply_to=event.message.reply_to_msg_id)
