@@ -661,7 +661,7 @@ state_library = {
 }
 
 
-def parse_geojson_data(path='tools/ukraine-with-regions_1530.geojson'):
+def parse_geojson_data(path='media/ukraine-with-regions_1530.geojson'):
     data = None
     with open(path, 'r') as file:
         data = file.read()
