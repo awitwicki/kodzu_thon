@@ -28,10 +28,11 @@ messages_cache = {}
 #help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.10`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.11`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
+        '`ppo [optional reply]` - PPO map,\n' \
         '`gum [reply]` - insert emojis,\n' \
         '`cum [reply]` - khaleese message,\n' \
         '`tr [reply]` - translate message,\n' \
@@ -133,6 +134,31 @@ async def handler(event: events.NewMessage.Event):
         os.remove('csv_path')
     else:
         await msg.edit(csv_path_or_error)
+
+
+# PPO map
+@client.on(events.NewMessage(pattern='^ppo$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        chat = await event.get_chat()
+        await event.edit("Loading...")
+
+        img_name, state_dict = helpers.make_alarm_map()
+
+        text='Повітряна тривога в областях:\n\n'
+
+        for district_name in state_dict.keys():
+            if state_dict[district_name]:
+                text += f'{district_name} ⚠️'
+
+        text += '\n\nair-save.ops.ajax.systems'
+
+        await event.delete()
+        await client.send_file(chat, img_name, caption=text, reply_to=event.message.reply_to_msg_id)
+
+    except Exception as e:
+        await event.edit('Fail')
+        print(e, file=sys.stderr)
 
 
 #break message

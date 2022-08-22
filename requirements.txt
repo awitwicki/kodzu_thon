@@ -9,3 +9,4 @@ pandas
 python-weather
 qbstyles
 yfinance
+basemap

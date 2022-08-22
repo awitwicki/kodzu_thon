@@ -13,13 +13,20 @@ from time import sleep
 
 from googletrans import Translator
 from googlesearch import search
-
-import pandas as pd
-
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
+import python_weather
+import pandas as pd
+
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+import numpy as np
+
+import yfinance as yf
+
 from qbstyles import mpl_style
+
 mpl_style(dark=True)
 
 import python_weather
@@ -42,6 +49,7 @@ symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍�
 
 
 def influx_query(query_str: str):
+    return
     try:
         url = 'http://localhost:8086/write?db=bots'
         headers = {'Content-Type': 'application/Text'}
@@ -613,3 +621,124 @@ def two_hundred_count():
     result = last_value + today_value + (average * days_delta) 
 
     return result
+
+# Air alarm map tools
+def centroid(vertexes):
+    _x_list = vertexes[:, 0]
+    _y_list = vertexes[:, 1]
+
+    _len = len(vertexes)
+    _x = sum(_x_list) / _len
+    _y = sum(_y_list) / _len
+
+    return(_x, _y)
+
+
+state_library = {
+    'Khmelnytskyi Oblast': 'Хмельницька область',
+    'Vinnytsia Oblast': 'Вінницька область',
+    'Rivne Oblast': 'Рівненська область',
+    'Volyn Oblast': 'Волинська область',
+    'Dnipropetrovsk Oblast': 'Дніпропетровська область',
+    'Zhytomyr Oblast': 'Житомирська область',
+    'Zakarpattia Oblast': 'Закарпатська область',
+    'Zaporizhia Oblast': 'Запорізька область',
+    'Ivano-Frankivsk Oblast': 'Івано-Франківська область',
+    'Kiev Oblast': 'Київська область',
+    'Kirovohrad Oblast': 'Кіровоградська область',
+    'Luhansk Oblast': 'Луганська область',
+    'Mykolaiv Oblast': 'Миколаївська область',
+    'Odessa Oblast': 'Одеська область',
+    'Poltava Oblast': 'Полтавська область',
+    'Sumy Oblast': 'Сумська область',
+    'Ternopil Oblast': 'Тернопільська область',
+    'Kharkiv Oblast': 'Харківська область',
+    'Kherson Oblast': 'Херсонська область',
+    'Cherkasy Oblast': 'Черкаська область',
+    'Chernihiv Oblast': 'Чернігівська область',
+    'Chernivtsi Oblast': 'Чернівецька область',
+    'Lviv Oblast': 'Львівська область',
+    'Donetsk Oblast': 'Донецька область'
+}
+
+
+def parse_geojson_data(path='tools/ukraine-with-regions_1530.geojson'):
+    data = None
+    with open(path, 'r') as file:
+        data = file.read()
+
+    geojson = json.loads(data)
+
+    districts = {}
+
+    for f in geojson['features']:
+        polygons = f['geometry']['coordinates']
+        # print(f"{f['properties']['name']}, polygons count: {len(polygons)}")
+
+        polygons = [np.array(p, dtype=np.float16) for p in polygons]
+        districts[f['properties']['name']] = { 'polygons': polygons }
+
+    return districts
+
+
+districts = parse_geojson_data()
+
+
+def get_alarms_dict():
+    request_url = 'https://air-save.ops.ajax.systems/api/mobile/regions'
+    r = requests.get(url=request_url)
+    alarm_data = r.json()['regions']
+    alarm_data = [f for f in alarm_data if f['state']]
+
+    alarms_in_regions = {}
+    inv_state_library = {v: k for k, v in state_library.items()}
+
+    for f in alarm_data:
+        if f['name'] in inv_state_library.keys():
+            normalized_name = inv_state_library[f['name']]
+            alarms_in_regions[f['name']] = len(f['alarmsInRegion']) > 0
+
+    return alarms_in_regions
+
+
+def make_alarm_map():
+    alarms_dict = get_alarms_dict()
+
+    fig = plt.figure(figsize=(15, 8))
+    map = Basemap(projection='lcc', lat_0=48.4, lon_0=31.25, width=14E5, height=1E6,resolution='l') # 'c','l','i','h' or 'f'
+
+    # Draw coastlines, country boundaries, fill continents.
+    map.drawcoastlines(linewidth=0.25)
+    map.drawcountries(linewidth=1)
+    map.fillcontinents(color='DarkSlateGray', lake_color='LightSeaGreen')
+    map.drawmapboundary(fill_color='LightSeaGreen')
+
+    # Draw lat/lon grid lines every 30 degrees.
+    map.drawmeridians(np.arange(0, 360, 3))
+    map.drawparallels(np.arange(-90, 90, 3))
+
+    for district_name in list(districts.keys()):
+        # Get alarm status
+        state_fill_color = 'Gray'
+        if district_name in state_library.keys():
+            normalized_district_name = state_library[district_name]
+            # print(normalized_district_name)
+            state_fill_color = 'Red' if alarms_dict[normalized_district_name] else 'Gray'
+
+        for polygon in districts[district_name]['polygons']:
+            data = np.array([map(x[0], x[1]) for x in polygon])
+            plt.fill(data[:, 0], data[:, 1], facecolor=state_fill_color, edgecolor='black', linewidth=1, alpha=0.5)
+
+        # Place text with state name
+        # x, y = centroid(districts[district_name]['polygons'][-1])
+        # x, y = map(x, y)
+        # print(f'{district_name} centroid coords: {x}, {y}')
+        # plt.text(x, y, district_name, fontsize=8)
+
+    # plt.title('Повітряна тривога')
+
+    # Save image
+    image_path = 'img/' + str(uuid.uuid4()) + '.png'
+    plt.savefig(image_path, bbox_inches='tight')
+    print(f'Image saved to {image_path}', file=sys.stderr)
+    return image_path, alarms_dict
