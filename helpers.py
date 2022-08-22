@@ -49,7 +49,6 @@ symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍�
 
 
 def influx_query(query_str: str):
-    return
     try:
         url = 'http://localhost:8086/write?db=bots'
         headers = {'Content-Type': 'application/Text'}
@@ -609,10 +608,10 @@ def two_hundred_count():
         return d.total_seconds() / TOTAL_DAY_SECS
 
     started = datetime.datetime(2022, 2, 24)
-    last_date = datetime.datetime(2022, 5, 30)
+    last_date = datetime.datetime(2022, 8, 22)
 
     total_calculated_days = (last_date - started).days
-    last_value = 30350
+    last_value = 45400
 
     days_delta = (datetime.datetime.utcnow() - last_date).days
     average = last_value / total_calculated_days
