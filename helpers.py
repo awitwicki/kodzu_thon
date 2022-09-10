@@ -11,6 +11,7 @@ import uuid
 import random
 from time import sleep
 
+import cachetools.func
 from googletrans import Translator
 from googlesearch import search
 import numpy as np
@@ -598,6 +599,13 @@ def make_currency_report():
     return image_path, build_percent_growth_strings
 
 
+@cachetools.func.ttl_cache(maxsize=128, ttl=60 * 60)
+def get_200_stat():
+    print("hi")
+    resp =  requests.get('https://russianwarship.rip/api/v1/statistics/latest')
+    return resp.json()
+
+
 def two_hundred_count():
     import datetime
     from datetime import timedelta
@@ -608,18 +616,21 @@ def two_hundred_count():
         return d.total_seconds() / TOTAL_DAY_SECS
 
     started = datetime.datetime(2022, 2, 24)
-    last_date = datetime.datetime(2022, 9, 6)
+    last_date = datetime.datetime.combine(datetime.date.today(), datetime.datetime.min.time())
+
+    _200_stat = get_200_stat()['data']
+    last_value = _200_stat['stats']['personnel_units']
+    last_increase = _200_stat['increase']['personnel_units']
 
     total_calculated_days = (last_date - started).days
-    last_value = 50150
-
     days_delta = (datetime.datetime.utcnow() - last_date).days
     average = last_value / total_calculated_days
 
-    today_value = average * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
-    result = last_value + today_value + (average * days_delta) 
+    today_value = last_increase * timedelta_percentage(datetime.datetime.utcnow() + timedelta(hours=2))
+    result = last_value + today_value + (average * days_delta)
 
     return result
+
 
 # Air alarm map tools
 def centroid(vertexes):
