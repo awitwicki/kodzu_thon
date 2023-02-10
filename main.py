@@ -25,10 +25,10 @@ client.start()
 
 messages_cache = {}
 
-#help
+# Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.11.2`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.11.3`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -108,7 +108,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#userId
+# UserId
 @client.on(events.NewMessage(pattern='^scans$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     reply_text = await helpers.build_message_chat_info(event, client)
@@ -116,7 +116,7 @@ async def handler(event: events.NewMessage.Event):
     await client.send_message('me', reply_text)
 
 
-#chatid
+# Chatid
 @client.on(events.NewMessage(pattern='^scan$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     reply_text = await helpers.build_message_chat_info(event, client)
@@ -161,7 +161,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#break message
+# Break message
 @client.on(events.NewMessage(pattern='^gum$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
@@ -170,7 +170,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(reply_text)
 
 
-#khaleesi message
+# Khaleesi message
 @client.on(events.NewMessage(pattern='^cum$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
@@ -179,7 +179,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(reply_text)
 
 
-#translate message
+# Translate message
 @client.on(events.NewMessage(pattern='^tr$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
@@ -189,7 +189,7 @@ async def handler(event: events.NewMessage.Event):
         await event.edit(reply_text)
 
 
-#translate message latin
+# Translate message latin
 @client.on(events.NewMessage(pattern='^trl', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     msg_text = (await event.message.get_reply_message()).text if event.message.is_reply else event.message.text.replace('trl', '').strip()
@@ -198,7 +198,7 @@ async def handler(event: events.NewMessage.Event):
     await event.edit(reply_text)
 
 
-#search text
+# Search text
 @client.on(events.NewMessage(pattern='^!s', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     origin_text = event.message.text.replace('!s', '').strip()
@@ -207,7 +207,7 @@ async def handler(event: events.NewMessage.Event):
     await event.edit(reply_text, link_preview = True)
 
 
-#send typing
+# Send typing
 @client.on(events.NewMessage(pattern='^!t$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -221,14 +221,14 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#weather
+# Weather
 @client.on(events.NewMessage(pattern='^!w$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     weather = helpers.get_weather()
     await event.edit(weather)
 
 
-#otmazka
+# Otmazka
 @client.on(events.NewMessage(pattern='^ot$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -240,7 +240,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#year progress
+# Year progress
 @client.on(events.NewMessage(pattern='^year$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -252,7 +252,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#covid
+# Covid
 @client.on(events.NewMessage(pattern='^covg$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -267,7 +267,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#satelite image
+# Satelite image
 @client.on(events.NewMessage(pattern='^sat$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -306,35 +306,38 @@ async def handler(event: events.MessageDeleted.Event):
 async def handler(event: events.NewMessage.Event):
     chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
 
-    if event.is_private:
-        if event.voice:
-            reply_text = 'Голосове повідомлення не доставлено, бо користувач заблокував цю опцію. Це повідомлення надіслано автоматично.'
-            await client.send_message(chat, reply_text, reply_to = event.message.id)
+    if event.is_private and event.voice:
+        reply_text = 'Голосове повідомлення не доставлено, бо користувач заблокував цю опцію. Це повідомлення надіслано автоматично.'
+        await client.send_message(chat, reply_text, reply_to = event.message.id)
 
     if event.is_group:
         try:
             msg = event.message
-            chat_title = chat.title.replace(' ', '\ ').replace('=', '\=')
+            chat_title = chat.title.replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
-            user_name = ''
-            if msg.sender.username:
-                user_name += '@' + msg.sender.username
-                
+            user_name = 'none'
+
+            try:
+                if msg.sender.username:
+                    user_name += '@' + msg.sender.username
+            except Exception as e:
+                print(e, file=sys.stderr)
+                print(f'chat_id: {chat.id}, message_id: {event._message_id}', file=sys.stderr)
+
             try:
                 if msg.sender.first_name:
                     user_name += f' {msg.sender.first_name}'
                 if msg.sender.last_name:
                     user_name += f' {msg.sender.last_name}'
-            except:
+            except Exception as ex:
                 user_name = f' {msg.sender.title}'
 
-            user_name = user_name.replace(' ', '\ ').replace('=', '\=')
+            user_name = user_name.strip().replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
             chat_id = chat.id
             user_id = msg.sender.id
-            sender: User = await event.get_sender()
 
-            helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} imcome_messages=1')
+            helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} income_messages=1')
 
             # Add to messages cache
             # If sender is not bot
@@ -345,7 +348,7 @@ async def handler(event: events.NewMessage.Event):
                     'sender_id': user_id,
                     'sender_name': user_name,
                     'chat_title': chat_title,
-                    'text': msg.text.replace('"', '\\"')
+                    'text': msg.text.replace('\\', '\\\\').replace('"', '\\"')
                 }
 
                 cached_chat = {
@@ -365,7 +368,7 @@ async def handler(event: events.NewMessage.Event):
             print(e, file=sys.stderr)
 
 
-#mute user
+# Mute user
 @client.on(events.NewMessage(pattern=r'^!m', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     chat = await event.get_chat()
@@ -403,7 +406,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#🦔🍎
+# 🦔🍎
 @client.on(events.NewMessage(pattern='^🦔$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     for i in range(19):
@@ -411,7 +414,7 @@ async def handler(event: events.NewMessage.Event):
         await asyncio.sleep(.5)
 
 
-#Loading
+# Loading
 @client.on(events.NewMessage(pattern='^loading$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -433,7 +436,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#print citate
+# Print citate
 @client.on(events.NewMessage(pattern='^!f', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -447,7 +450,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#voice note
+# Voice note
 @client.on(events.NewMessage(pattern='^!a', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -462,7 +465,6 @@ async def handler(event: events.NewMessage.Event):
 
             voicename, _duration = speech.syntese(origin_text, background = True)
 
-            chat = await event.get_chat()
             wafe_form = speech.get_waveform(0, 31, 100)
             await client.send_file(chat, voicename, reply_to = event.message.reply_to_msg_id, attributes=[types.DocumentAttributeAudio(duration=_duration, voice=True, waveform=utils.encode_waveform(bytes(wafe_form)))]) # 2**5 because 5-bit
 
@@ -472,7 +474,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#video note
+# Video note
 @client.on(events.NewMessage(pattern='^!v', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -496,7 +498,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#video "same shit"
+# Video "same shit"
 @client.on(events.NewMessage(pattern='^хня$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -510,7 +512,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#demon voice note
+# Demon voice note
 @client.on(events.NewMessage(pattern='^!d', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
@@ -520,7 +522,6 @@ async def handler(event: events.NewMessage.Event):
             origin_text = event.message.text.replace('!d ', '')
             voicename, _duration = speech.demon(origin_text)
 
-            chat = await event.get_chat()
             wafe_form = speech.get_waveform(0, 31, 100)
             await client.send_file(chat, voicename, reply_to = event.message.reply_to_msg_id, attributes=[types.DocumentAttributeAudio(duration=_duration, voice=True, waveform=utils.encode_waveform(bytes(wafe_form)))]) # 2**5 because 5-bit
 
@@ -530,7 +531,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-#background voice note
+# Background voice note
 @client.on(events.NewMessage(outgoing=True, forwards=False))
 async def handler(event: events.NewMessage.Event):
     if event.voice:
@@ -540,15 +541,14 @@ async def handler(event: events.NewMessage.Event):
             path_to_voice = await event.download_media()
             voicename, _duration = speech.megre_sounds(path_to_voice)
 
-            chat = await event.get_chat()
             wafe_form = speech.get_waveform(0, 31, 100)
             await client.send_file(chat, voicename, reply_to = event.message.reply_to_msg_id, attributes=[types.DocumentAttributeAudio(duration=_duration, voice=True, waveform=utils.encode_waveform(bytes(wafe_form)))]) # 2**5 because 5-bit
 
             speech.try_delete(voicename)
 
 
-#btc price
-@client.on(events.NewMessage(pattern='(^btc$)|(^Btc$)|(^BTC$)', outgoing=True))
+# btc price
+@client.on(events.NewMessage(pattern='(?i)(^btc$)', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         btc_price = helpers.get_btc()
@@ -559,10 +559,14 @@ async def handler(event: events.NewMessage.Event):
 
 
 # Crypto report
+# Not works
 @client.on(events.NewMessage(pattern='^cr', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
         chat = await event.get_chat()
+        await event.edit("Not works")
+        return
+
         await event.edit("Loading...")
 
         args = event.message.text.split()

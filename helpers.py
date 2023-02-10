@@ -73,7 +73,7 @@ def get_btc():
 
     return price
 
-
+# Not works
 def make_crypto_report(currency_name: str ='BTC', days_count: int = 30):
     now_date = datetime.datetime.now()
 
@@ -200,7 +200,7 @@ def get_covid():
 
 
 def get_year_progress(length=20):
-    def progressBar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
+    def progress_bar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
         percent = ("{0:." + str(decimals) + "f}").format(100 * (value / float(total)))
         filledLength = int(length * value // total)
         bar = fill * filledLength + '-' * (length - filledLength)
@@ -209,7 +209,7 @@ def get_year_progress(length=20):
     from datetime import datetime
     day_of_year = datetime.now().timetuple().tm_yday
     timenow = datetime.now().strftime("%H:%M")
-    yr = progressBar(day_of_year, 365, length=length)
+    yr = progress_bar(day_of_year, 365, length=length)
     yr = f'{yr} {day_of_year}/365'
     # yr = f'2020:{yr}{timenow} {day_of_year}/365 days'
 
@@ -217,17 +217,9 @@ def get_year_progress(length=20):
 
 
 def get_life_progress():
-    def progressBar(value, total = 100, prefix = '', suffix = '', decimals = 2, length = 100, fill = '█'):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (value / float(total)))
-        filledLength = int(length * value // total)
-        bar = fill * filledLength + '-' * (length - filledLength)
-        return f'{prefix} |{bar}| {percent}% {suffix}'
-
-    # from datetime import datetime
     date_time_obj = datetime.datetime.strptime('2003-05-08', '%Y-%m-%d')
     day_of_year = (datetime.datetime.now() - date_time_obj)
     days = day_of_year.days
-    # pb = progressBar(days, 29200, prefix = 'Life progress: ', length=20)
     percent = ("{0:." + str(5) + "f}").format(100 * (days / float(29200)))
     yr = f'Uptime {days} days. Progress {percent}%'
 
@@ -448,7 +440,6 @@ async def scrap_chat_users(event: events.NewMessage.Event, client: TelegramClien
 
 # Finances
 def get_ticker_info(ticker):
-    # ticker = yf.Ticker(ticker_name)
     return ticker.info
 
 
@@ -698,7 +689,7 @@ def get_alarms_dict():
     request_url = 'https://air-save.ops.ajax.systems/api/mobile/regions'
     r = requests.get(url=request_url)
     alarm_data = r.json()['regions']
-    alarm_data = [f for f in alarm_data if f['state']]
+    alarm_data = [f for f in alarm_data if f['regionType'] == 'STATE']
 
     alarms_in_regions = {}
     inv_state_library = {v: k for k, v in state_library.items()}
@@ -715,17 +706,17 @@ def make_alarm_map():
     alarms_dict = get_alarms_dict()
 
     fig = plt.figure(figsize=(15, 8))
-    map = Basemap(projection='lcc', lat_0=48.4, lon_0=31.25, width=14E5, height=1E6,resolution='l') # 'c','l','i','h' or 'f'
+    render_map = Basemap(projection='lcc', lat_0=48.4, lon_0=31.25, width=14E5, height=1E6,resolution='l') # 'c','l','i','h' or 'f'
 
     # Draw coastlines, country boundaries, fill continents.
-    map.drawcoastlines(linewidth=0.25)
-    map.drawcountries(linewidth=1)
-    map.fillcontinents(color='DarkSlateGray', lake_color='LightSeaGreen')
-    map.drawmapboundary(fill_color='LightSeaGreen')
+    render_map.drawcoastlines(linewidth=0.25)
+    render_map.drawcountries(linewidth=1)
+    render_map.fillcontinents(color='DarkSlateGray', lake_color='LightSeaGreen')
+    render_map.drawmapboundary(fill_color='LightSeaGreen')
 
     # Draw lat/lon grid lines every 30 degrees.
-    map.drawmeridians(np.arange(0, 360, 3))
-    map.drawparallels(np.arange(-90, 90, 3))
+    render_map.drawmeridians(np.arange(0, 360, 3))
+    render_map.drawparallels(np.arange(-90, 90, 3))
 
     for district_name in list(districts.keys()):
         # Get alarm status
@@ -736,12 +727,12 @@ def make_alarm_map():
             state_fill_color = 'Red' if alarms_dict[normalized_district_name] else 'Gray'
 
         for polygon in districts[district_name]['polygons']:
-            data = np.array([map(x[0], x[1]) for x in polygon])
+            data = np.array([render_map(x[0], x[1]) for x in polygon])
             plt.fill(data[:, 0], data[:, 1], facecolor=state_fill_color, edgecolor='black', linewidth=1, alpha=0.5)
 
         # Place text with state name
         # x, y = centroid(districts[district_name]['polygons'][-1])
-        # x, y = map(x, y)
+        # x, y = render_map(x, y)
         # print(f'{district_name} centroid coords: {x}, {y}')
         # plt.text(x, y, district_name, fontsize=8)
 
