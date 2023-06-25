@@ -34,7 +34,7 @@ import python_weather
 
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import GetParticipantsRequest
-from telethon.tl.types import ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
+from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
 from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
 
 import yfinance as yf
@@ -354,47 +354,53 @@ async def build_message_chat_info(event: events.NewMessage.Event, client: Telegr
 
         # If reply_msg then scan sender
         if reply_msg:
-            try:
-                sender_name = f'{reply_msg.sender.title}'
-            except:
-                sender_name = f'{reply_msg.sender.first_name} {reply_msg.sender.last_name}'
+            user_name = '@' + reply_msg.sender.username if reply_msg.sender.username else reply_msg.sender.username
+            first_name = reply_msg.sender.first_name if reply_msg.sender.first_name else ''
+            last_name = reply_msg.sender.last_name if reply_msg.sender.last_name else ''
+            full_name = ' '.join([first_name, last_name])
 
             reply_text = f'┌ Scan info:\n'\
-                         f'├ Username: @{reply_msg.sender.username}\n'\
+                         f'├ Username: {user_name}\n'\
                          f'├ User id: {reply_msg.sender.id}\n'\
-                         f'├ Full name: {sender_name}\n'\
+                         f'├ Full name: {full_name}\n'\
                          f'├ Chat id: {event.chat_id}\n'\
                          f'└ Message id: {event._message_id}'
         # Else scan chat
         else:
             chat = await event.get_chat()
 
-            reply_text = f'┌ Scan info:\n'
+            if not isinstance(chat, Channel):
+                return 'Scan only chats'
 
-            try:
-                if chat.username:
-                    reply_text +=  f'├ Chat username: @{chat.username}\n'
-            except:
-                pass
+            chat_user_name = '@' + chat.username if chat.username else chat.username
 
-            reply_text += f'├ Chat name: {chat.title}\n'\
-                    f'├ Chat id: {chat.id}\n'
+            owner_id = ''
+            owner_user_name = ''
+            owner_full_name = ''
 
             try:
                 admins = await client.get_participants(chat, filter=ChannelParticipantsAdmins)
                 creator = [admin for admin in admins if isinstance(admin.participant, ChatParticipantCreator) or isinstance(admin.participant, ChannelParticipantCreator)][0]
 
-                reply_text +=  f'├ Owner Username: {"@" + creator.username if creator.username else "-"}\n'\
-                            f'├ Owner id: {creator.id}\n'
+                if creator:
+                    owner_id = creator.id
+                    owner_user_name = '@' + creator.username if creator.username else creator.username
 
-                try:
-                    creator_name = f'{creator.title}'
-                except:
-                    creator_name = f'{creator.first_name} {creator.last_name}'
+                    owner_first_name = creator.first_name if creator.first_name else ''
+                    owner_last_name = creator.last_name if creator.last_name else ''
 
-                reply_text += f'└ Owner Full name: {creator_name}'
-            except:
-                reply_text += f'└ Owner not found'
+                    owner_full_name = ' '.join([owner_first_name, owner_last_name])
+            except Exception as e:
+                print(e, file=sys.stderr)
+
+            reply_text = '┌ Scan info:\n'\
+                        f'├ Chat username: {chat_user_name}\n'\
+                        f'├ Chat title: {chat.title}\n'\
+                        f'├ Chat id: {chat.id}\n'\
+                        f'├ Creation date: {chat.date}\n'\
+                        f'├ Owner id: {owner_id}\n'\
+                        f'├ Owner Username: {owner_user_name}\n'\
+                        f'└ Owner Full name: {owner_full_name}\n'
 
         return reply_text
 
