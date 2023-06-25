@@ -28,7 +28,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.11.5`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.11.6`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -315,13 +315,12 @@ async def handler(event: events.NewMessage.Event):
             msg = event.message
             chat_title = chat.title.replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
-            if msg.sender.username:
-                user_name += '@' + msg.sender.username
-            else:
-                first_name = msg.sender.first_name if msg.sender.first_name else ''
-                last_name = msg.sender.last_name if msg.sender.last_name else ''
+            user_name = '@' + msg.sender.username if msg.sender.username else msg.sender.username
+            first_name = msg.sender.first_name if msg.sender.first_name else ''
+            last_name = msg.sender.last_name if msg.sender.last_name else ''
+            full_name = ' '.join([first_name, last_name])
 
-                user_name = ' '.join([first_name, last_name])
+            user_name = user_name if user_name else full_name
 
             user_name = user_name.strip().replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
