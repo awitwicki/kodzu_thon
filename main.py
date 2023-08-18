@@ -28,7 +28,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.12.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.12.2`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -620,14 +620,14 @@ async def handler(event: events.NewMessage.Event):
 async def update_bio():
     while True:
         new_about = helpers.get_year_progress()
-        raw_temp = await helpers.get_raw_temp()
+        # raw_temp = await helpers.get_raw_temp()
         new_lastname = f'{helpers.two_hundred_count():.2f}'
 
         print(f'Update info for {new_lastname} - {new_about}')
         await client(UpdateProfileRequest(about=new_about))
         await client(UpdateProfileRequest(about=new_about, last_name=new_lastname))
 
-        helpers.get_upload_temp_data(raw_temp)
+        # helpers.get_upload_temp_data(raw_temp)
         await asyncio.sleep(300)
 
         # https://github.com/gawel/aiocron CRON <====================================

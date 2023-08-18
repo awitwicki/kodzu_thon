@@ -143,6 +143,8 @@ def get_upload_temp_data(raw_api_dict):
         print(e)
 
 
+# TODO
+# Stopped work, gets zeros
 async def get_raw_temp():
     raw_api_dict = {}
     raw_api_dict['current'] = 0
