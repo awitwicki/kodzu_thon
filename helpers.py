@@ -305,13 +305,6 @@ def random_emoji():
     return random.choice(emojis)
 
 
-def random_otmazka():
-    f = open(file = 'otmazki.txt', mode = 'r', encoding = 'utf-8')
-    lines = f.readlines()
-    f.close()
-    return random.choice(lines)
-
-
 def break_text(msg_text):
     count = int(len(msg_text)/4)
 

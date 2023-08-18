@@ -28,7 +28,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.12`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.12.1`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -40,7 +40,6 @@ async def help(event: events.NewMessage.Event):
         '`!w` - get weather,\n' \
         '`!s {search text}` - google text,\n' \
         '`!t` - imitation typing for 5 minutes,\n' \
-        '`ot` - random otmazka,\n' \
         '`year` - year info,\n' \
         '`covg` - covid chart info,\n' \
         '`sat` - image from satellite,\n' \
@@ -229,18 +228,6 @@ async def handler(event: events.NewMessage.Event):
     await event.edit(weather)
 
 
-# Otmazka
-@client.on(events.NewMessage(pattern='^ot$', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        chat = await event.get_chat()
-        otm = helpers.random_otmazka()
-        await event.edit(otm)
-
-    except Exception as e:
-        print(e, file=sys.stderr)
-
-
 # Year progress
 @client.on(events.NewMessage(pattern='^year$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
@@ -268,7 +255,7 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-# Satelite image
+# Satellite image
 @client.on(events.NewMessage(pattern='^sat$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
     try:
