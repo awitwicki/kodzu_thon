@@ -6,3 +6,6 @@
 /tools
 
 .env
+
+_*
+.idea*
