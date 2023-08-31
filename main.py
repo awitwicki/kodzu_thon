@@ -29,7 +29,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.12.3`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.12.4`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -528,16 +528,19 @@ async def handler(event: events.NewMessage.Event):
 @client.on(events.NewMessage(outgoing=True, forwards=False))
 async def handler(event: events.NewMessage.Event):
     if event.voice:
-        chat = await event.get_chat()
-        await event.delete()
-        async with client.action(chat, 'record-voice'):
-            path_to_voice = await event.download_media()
-            voicename, _duration = speech.megre_sounds(path_to_voice)
+        event_media_date = event.message.file.media.date
+        datenow = datetime.datetime.now(event_media_date.tzinfo)
+        if (datenow - event_media_date).seconds < 60:
+            chat = await event.get_chat()
+            await event.delete()
+            async with client.action(chat, 'record-voice'):
+                path_to_voice = await event.download_media()
+                voicename, _duration = speech.megre_sounds(path_to_voice)
 
-            wafe_form = speech.get_waveform(0, 31, 100)
-            await client.send_file(chat, voicename, reply_to = event.message.reply_to_msg_id, attributes=[types.DocumentAttributeAudio(duration=_duration, voice=True, waveform=utils.encode_waveform(bytes(wafe_form)))]) # 2**5 because 5-bit
+                wafe_form = speech.get_waveform(0, 31, 100)
+                await client.send_file(chat, voicename, reply_to = event.message.reply_to_msg_id, attributes=[types.DocumentAttributeAudio(duration=_duration, voice=True, waveform=utils.encode_waveform(bytes(wafe_form)))]) # 2**5 because 5-bit
 
-            speech.try_delete(voicename)
+                speech.try_delete(voicename)
 
 
 # btc price
