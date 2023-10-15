@@ -8,4 +8,5 @@
 .env
 
 _*
-.idea*
+/.idea
+.DS_Store
