@@ -3,7 +3,7 @@ from __future__ import print_function
 from telethon import TelegramClient, events, types, utils
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import ChatBannedRights, User
+from telethon.tl.types import ChatBannedRights, User, Channel, Chat
 
 import time
 
@@ -29,7 +29,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.12.4`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.12.5`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -305,17 +305,29 @@ async def handler(event: events.NewMessage.Event):
             chat_title = chat.title.replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
             user_name = '@' + msg.sender.username if msg.sender.username else msg.sender.username
-            first_name = msg.sender.first_name if msg.sender.first_name else ''
-            last_name = msg.sender.last_name if msg.sender.last_name else ''
-            full_name = ' '.join([first_name, last_name])
+            full_name = 'unknown'
+
+            if type(msg.sender) is User:
+                user: User = msg.sender
+                first_name = user.first_name if user.first_name else ''
+                last_name = user.last_name if user.last_name else ''
+
+                full_name = ' '.join([first_name, last_name])
+
+            if type(msg.sender) is Channel:
+                channel: Channel = msg.sender
+                full_name = channel.title
+
+            if type(msg.sender) is Chat:
+                chat: Chat = msg.sender
+                full_name = chat.title
+
 
             user_name = user_name if user_name else full_name
-
             user_name = user_name.strip().replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
             chat_id = chat.id
             user_id = msg.sender.id
-
             helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} income_messages=1')
 
             # Add to messages cache
