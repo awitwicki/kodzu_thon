@@ -29,7 +29,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.12.5`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.13`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -38,12 +38,9 @@ async def help(event: events.NewMessage.Event):
         '`cum [reply]` - khaleese message,\n' \
         '`tr [reply]` - translate message,\n' \
         '`tr {text or [reply]}` - translate to latin,\n' \
-        '`!w` - get weather,\n' \
         '`!s {search text}` - google text,\n' \
         '`!t` - imitation typing for 5 minutes,\n' \
         '`year` - year info,\n' \
-        '`covg` - covid chart info,\n' \
-        '`sat` - image from satellite,\n' \
         '`!m {20} {m/h/d}` - mute someone for {20} {m} - minutes,\n' \
         '`🦔` - nice cartoon,\n' \
         '`loading` - loading animation,\n' \
@@ -53,10 +50,8 @@ async def help(event: events.NewMessage.Event):
         '`!d {text or [reply]}` - demon speech,\n' \
         '`хня [optional reply]` - bredor video,\n' \
         '`ніх [optional reply]` - damn video,\n' \
-        '`!yf {ticker name}` - ticker report,\n' \
         '`curr` - currencies report,\n' \
         '`btc` - bitcoin stock price.\n' \
-        '`cr {optional btc}` - bitcoin stock report.\n' \
         '`!lk {emoji} {count} [reply]` - reaction messages attack,\n\n' \
         '[github](https://github.com/awitwicki/kodzu_thon)'
 
@@ -216,17 +211,9 @@ async def handler(event: events.NewMessage.Event):
         await event.delete()
         async with client.action(chat, 'typing'):
             await asyncio.sleep(300)
-            pass
 
     except Exception as e:
         print(e, file=sys.stderr)
-
-
-# Weather
-@client.on(events.NewMessage(pattern='^!w$', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    weather = helpers.get_weather()
-    await event.edit(weather)
 
 
 # Year progress
@@ -236,35 +223,6 @@ async def handler(event: events.NewMessage.Event):
         text = "Year progress:\n"
         text += helpers.get_year_progress(30)
         await event.edit(f'`{text}`')
-
-    except Exception as e:
-        print(e, file=sys.stderr)
-
-
-# Covid
-@client.on(events.NewMessage(pattern='^covg$', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        chat = await event.get_chat()
-        await event.edit("Loading...")
-        img_name = helpers.covid_graph()
-        await event.delete()
-        cov = helpers.get_covid()
-        await client.send_file(chat, img_name, caption=cov)
-
-    except Exception as e:
-        print(e, file=sys.stderr)
-
-
-# Satellite image
-@client.on(events.NewMessage(pattern='^sat$', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        chat = await event.get_chat()
-        await event.edit("Loading...")
-        img_name = helpers.get_sat_img()
-        await event.delete()
-        await client.send_file(chat, img_name)
 
     except Exception as e:
         print(e, file=sys.stderr)
@@ -292,7 +250,7 @@ async def handler(event: events.MessageDeleted.Event):
 
 # Autoresponder
 @client.on(events.NewMessage(incoming=True))
-async def handler(event: events.NewMessage.Event):
+async def handler_autoresponder(event: events.NewMessage.Event):
     chat = event.chat if event.chat else (await event.get_chat()) # telegram MAY not send the chat enity
 
     if event.is_private and event.voice:
@@ -415,7 +373,6 @@ async def handler(event: events.NewMessage.Event):
             temp = temp if temp > 5 else 5
             percentage += temp / random.randint(5, 10)
             percentage = round(percentage, 2)
-            # if percentage > 100: percentage = 100
             progress = int(percentage // 5)
             await event.edit(f'`|{"█" * progress}{"-" * (20 - progress)}| {percentage}%`')
             await asyncio.sleep(.5)
@@ -566,53 +523,6 @@ async def handler(event: events.NewMessage.Event):
         print(e, file=sys.stderr)
 
 
-# Crypto report
-# Not works
-@client.on(events.NewMessage(pattern='^cr', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        chat = await event.get_chat()
-        await event.edit("Not works")
-        return
-
-        await event.edit("Loading...")
-
-        args = event.message.text.split()
-        if len(args) > 1:
-            currency_name = args[1].upper()
-        else:
-            currency_name = 'BTC'
-
-        img_name, actual_currency, percent_growth = helpers.make_crypto_report(currency_name)
-
-        text = f'**{currency_name}** `{actual_currency:.2f} USD ({percent_growth:.2f}%)`'
-
-        await event.delete()
-        await client.send_file(chat, img_name, caption=text)
-
-    except Exception as e:
-        await event.edit('Fail')
-        print(e, file=sys.stderr)
-
-
-# Ticker info report
-@client.on(events.NewMessage(pattern='^yf', outgoing=True))
-async def handler(event: events.NewMessage.Event):
-    try:
-        chat = await event.get_chat()
-        await event.edit("Loading...")
-
-        ticker_name = event.message.text.replace('yf', '').strip()
-        text, img_name = helpers.make_ticker_report(ticker_name)
-
-        await event.delete()
-        await client.send_file(chat, img_name, caption=text)
-
-    except Exception as e:
-        await event.edit('Fail')
-        print(e, file=sys.stderr)
-
-
 # Currencies info report
 @client.on(events.NewMessage(pattern='^curr$', outgoing=True))
 async def handler(event: events.NewMessage.Event):
@@ -636,14 +546,12 @@ async def handler(event: events.NewMessage.Event):
 async def update_bio():
     while True:
         new_about = helpers.get_year_progress()
-        # raw_temp = await helpers.get_raw_temp()
         new_lastname = f'{helpers.two_hundred_count():.2f}'
 
         print(f'Update info for {new_lastname} - {new_about}')
         await client(UpdateProfileRequest(about=new_about))
         await client(UpdateProfileRequest(about=new_about, last_name=new_lastname))
 
-        # helpers.get_upload_temp_data(raw_temp)
         await asyncio.sleep(300)
 
         # https://github.com/gawel/aiocron CRON <====================================

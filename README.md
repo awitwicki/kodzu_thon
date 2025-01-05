@@ -41,15 +41,3 @@ docker-compose up -d
 ```
 
 (optionally) OR before run app in docker You need to get `.session` file by authorize app manually on python3 machine.
-
-### OR
-### 4.Python
-
-1. `pip install -r requirements.txt`
-
-2. Install **ffmpeg** and **ffprobe**
-
-    * [windows](https://ffmpeg.zeranoe.com/builds/) install and place `ffmpeg.exe`, `ffprobe.exe` in **PATH**
-    * [linux](https://www.tecmint.com/install-ffmpeg-in-linux/) (just install, it will work)
-
-3. Also You can use `telethon.service` template to install it as systemctl daemon

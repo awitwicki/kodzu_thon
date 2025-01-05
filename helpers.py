@@ -4,8 +4,8 @@ from logging import exception
 import sys
 import os
 import datetime
+from datetime import timezone
 import requests
-import urllib
 import json
 import uuid
 import random
@@ -16,8 +16,6 @@ from googletrans import Translator
 from googlesearch import search
 import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib.dates as mdates
-import python_weather
 import pandas as pd
 
 from mpl_toolkits.basemap import Basemap
@@ -30,27 +28,23 @@ from qbstyles import mpl_style
 
 mpl_style(dark=True)
 
-import python_weather
-
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
 from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
-
-import yfinance as yf
 
 city_name = os.environ.get('TELETHON_CITY', 'Odessa')
 
 # create folders
 if not os.path.exists('img'):
     os.makedirs('img')
-    print(f"Created dir /img", file=sys.stderr)
+    print("Created dir /img", file=sys.stderr)
 
 symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍👨‍👦👨‍👨‍👦‍👦'
 
-
 def influx_query(query_str: str):
     try:
+        return
         url = 'http://localhost:8086/write?db=bots'
         headers = {'Content-Type': 'application/Text'}
 
@@ -72,133 +66,6 @@ def get_btc():
     price = f'Bitcoint price: {price} USD'
 
     return price
-
-# Not works
-def make_crypto_report(currency_name: str ='BTC', days_count: int = 30):
-    now_date = datetime.datetime.now()
-
-    start_date_str = (now_date - datetime.timedelta(days = days_count)).strftime("%Y-%m-%dT%H:%M")
-    end_date_str = now_date.strftime("%Y-%m-%dT%H:%M")
-
-    # https://www.coindesk.com/price/bitcoin/
-    request_url = 'https://www.coindesk.com/pf/api/v3/content/fetch/chart-api?query={"end_date":"' \
-        + f'{end_date_str}' \
-        + '","iso":"' \
-        + f'{currency_name}' \
-        + '","ohlc":false,"start_date":"' \
-        + f'{start_date_str}' \
-        + '"}&d=179&_website=coindesk'
-
-    r = requests.get(url=request_url)
-
-    # Extracting data in json format
-    data = r.json()
-
-    # Parse historical data and convert to datetime
-    history = [(datetime.datetime.fromtimestamp(f[0] / 1000), f[1]) for f in data['entries']]
-
-    # Convert to 2d array and split for 2 arrays
-    history = np.array(history)
-    dates = history[:, 0]
-    values = history[:, 1]
-
-    # Create the figure and subplots
-    fig = plt.figure(figsize=(12,8))
-
-    ax = plt.subplot()
-    ax.plot(dates, values)
-    ax.set_title(f'{currency_name} currencies for last {days_count} days', fontsize=20)
-    ax.grid(linestyle = '--', linewidth = 0.7)
-
-    # Rotate the x-axis labels so they don't overlap
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=20)
-    plt.tight_layout()
-
-    # Calculate extra info
-    actual_currency = values[-1]
-    percent_growth = 100 * (values[-1] - values[0]) / values[0]
-
-    # Save image
-    image_path = f'img/{uuid.uuid4()}.png'
-    plt.savefig(image_path, bbox_inches='tight')
-
-    return image_path, actual_currency, percent_growth
-
-
-def get_weather():
-    weather_string = 'Weather forecast is not completed yet'
-    return weather_string
-
-
-def get_upload_temp_data(raw_api_dict):
-    try:
-        # current weather
-        temperature = raw_api_dict['current']
-        humidity = raw_api_dict['humidity']
-
-        data_str = f'iot,room=outside_rzeszow,device=kodzuthon,sensor=openweather_api temperature={temperature},humidity={humidity}'
-        influx_query(data_str)
-
-    except Exception as e:
-        print(e)
-
-
-# TODO
-# Stopped work, gets zeros
-async def get_raw_temp():
-    raw_api_dict = {}
-    raw_api_dict['current'] = 0
-    raw_api_dict['humidity'] = 0
-
-    try:
-        # declare the client. format defaults to metric system (celcius, km/h, etc.)
-        client = python_weather.Client(format=python_weather.METRIC)
-
-        # fetch a weather forecast from a city
-        weather = await client.find(city_name)
-
-        # close the wrapper once done
-        await client.close()
-
-        raw_api_dict['current'] = weather.current.temperature
-        raw_api_dict['humidity'] = weather.current.humidity
-    except:
-        pass
-
-    return raw_api_dict
-
-
-def get_temp(raw_api_dict):
-    # current weather
-    current = raw_api_dict['current']
-    temp = f"{current}cm"
-
-    return temp
-
-
-def get_covid():
-    def make_countrystring(country):
-        return f"{country['Country']}: +{country['NewConfirmed']}/{country['TotalConfirmed']}"
-
-    try:
-        url = urllib.request.urlopen('https://api.covid19api.com/summary')
-        output = url.read().decode('utf-8')
-        raw_api_dict = json.loads(output)
-        url.close()
-
-        countries = raw_api_dict['Countries']
-        countries = {f['CountryCode']:f for f in countries}
-
-        pl = countries['PL']
-        ua = countries['UA']
-
-        pl = make_countrystring(pl)
-        ua = make_countrystring(ua)
-
-        ret = f'{pl}\n{ua}\n\ncovid19api.com'
-        return ret
-    except:
-        return 'Caching in progress...'
 
 
 def get_year_progress(length=20):
@@ -226,78 +93,6 @@ def get_life_progress():
     yr = f'Uptime {days} days. Progress {percent}%'
 
     return yr
-
-
-def get_new_cases(country):
-    try:
-        url = urllib.request.urlopen(f'https://api.covid19api.com/dayone/country/{country}/status/confirmed/live')
-        output = url.read().decode('utf-8')
-        raw_api_dict = json.loads(output)
-        url.close()
-
-        cases = [f['Cases'] for f in raw_api_dict]
-        cases = list(map(lambda i: i[0] - i[1], zip(cases, [0] + cases)))
-
-        #datetime format => '2020-03-27T00:00:00Z'
-        days = [ datetime.datetime.strptime(f['Date'], '%Y-%m-%dT%H:%M:%SZ') for f in raw_api_dict]
-
-        # Remove todays day because its always zeros
-        days = days[:-1]
-        cases = cases[:-1]
-
-        # Take last 2 months
-        fr = 60
-        days = days[-fr:]
-        cases = cases[-fr:]
-
-        return days, cases
-    except:
-        return [], []
-
-
-def covid_graph():
-    ukraine_days, ukraine_cases = get_new_cases(country='ukraine')
-    poland_days, poland_cases = get_new_cases(country='poland')
-
-    # Calculate per population
-    ukraine_cases = [case / 41.98e6 * 1e6 for case in ukraine_cases]
-    poland_cases = [case / 37.97e6 * 1e6 for case in poland_cases]
-
-    # Make chart
-    fig = plt.figure()
-    plt.plot(ukraine_days, ukraine_cases, color = 'cadetblue')
-    plt.plot(poland_days, poland_cases, color = 'gold')
-
-    plt.legend(('Ukraine', 'Poland'), loc='upper left')
-
-    plt.title(f"Covid new cases trends per population", loc='left')
-
-    fig.autofmt_xdate()
-    plt.grid(linestyle = '--', linewidth = 0.7)
-
-
-    image_path = 'img/' + str(uuid.uuid4()) + '.png'
-    plt.savefig(image_path, bbox_inches='tight')
-    print(f'Image saved to {image_path}', file=sys.stderr)
-    return image_path
-
-
-def get_sat_img():
-    fname = 'img/' + datetime.datetime.now().strftime("%m%d%Y%H_%M_%S") + '.jpg'
-
-    with open(fname, 'wb') as handle:
-        response = requests.get('https://en.sat24.com/image?type=visual&region=eu', stream=True)
-
-        if not response.ok:
-            print(response)
-
-        for block in response.iter_content(1024):
-            if not block:
-                break
-
-            handle.write(block)
-
-        return fname
 
 
 def random_emoji():
@@ -360,6 +155,7 @@ async def build_message_chat_info(event: events.NewMessage.Event, client: Telegr
                          f'├ Full name: {full_name}\n'\
                          f'├ Chat id: {event.chat_id}\n'\
                          f'└ Message id: {event._message_id}'
+
         # Else scan chat
         else:
             chat = await event.get_chat()
@@ -485,53 +281,28 @@ def get_ticker_recommendations(ticker):
     return label_text + recommendations
 
 
-def make_ticker_plot(ticker_history, ticker_name):
-    fig = plt.figure()
-    plt.plot(ticker_history['Datetime'].values, ticker_history['Close'].values)
-
-    plt.title(f"{ticker_name} ticker price", loc='left')
-    plt.ylabel('Close price USD')
-
-    fig.autofmt_xdate()
-    plt.grid(linestyle = '--', linewidth = 0.7)
-
-    # Save image
-    image_path = 'img/' + str(uuid.uuid4()) + '.png'
-    plt.savefig(image_path, bbox_inches='tight')
-    print(f'Image saved to {image_path}', file=sys.stderr)
-    return image_path
-
-
-def make_ticker_report(ticker_name):
-    ticker = yf.Ticker(ticker_name)
-    ticker_info = get_ticker_info(ticker)
-    ticker_name = ticker_info['symbol']
-
-    ticker_main_info = get_ticker_data(ticker_info)
-
-    ticker_history = get_ticker_history(ticker)
-    ticker_history_image_path = make_ticker_plot(ticker_history, ticker_name)
-
-    ticker_growth_dollar, ticker_growth_percent = get_ticker_growth(ticker_history)
-
-    ticker_recommendations = get_ticker_recommendations(ticker)
-
-    return ticker_main_info + f' {ticker_growth_percent:.2f}% ({ticker_growth_dollar:.2f}$)' + '\n\n' + ticker_recommendations, ticker_history_image_path
-
-
 def make_currency_report():
-    # Prepare data
-    date_now = datetime.datetime.utcnow()
-    start_date = date_now - datetime.timedelta(days = 30)
-    end_date = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    date_now = datetime.datetime.now(timezone.utc)
+    start_date = date_now - datetime.timedelta(days=30)
+    end_date = datetime.datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     data_EURUSD = yf.download('EURUSD=X', start=start_date, end=end_date)
     data_USDPLN = yf.download('USDPLN=X', start=start_date, end=end_date)
     data_USDUAH = yf.download('USDUAH=X', start=start_date, end=end_date)
 
+    def simplify_ticker_dataframe(df):
+        df.columns = df.columns.droplevel(1)
+        df = pd.DataFrame(df[['Close']].values, index=df.index.values, columns=['Close'])
+        df.index.name = 'Date'
+        return df
+
+    data_EURUSD = simplify_ticker_dataframe(data_EURUSD)
+    data_USDPLN = simplify_ticker_dataframe(data_USDPLN)
+    data_USDUAH = simplify_ticker_dataframe(data_USDUAH)
+
     # Calculate PLN/UAH currency
-    data_PLNUAH = pd.concat([data_USDPLN.rename(columns={"Close": "Close_usd_pln"}), data_USDUAH], axis=1).rename(columns={"Close": "Close_usd_uah"})
-    data_PLNUAH['Close'] = data_PLNUAH.apply(lambda x: 1/x.Close_usd_pln * x.Close_usd_uah, axis=1)
+    data_PLNUAH = pd.concat([data_USDPLN.rename(columns={"Close": "Close_usd_pln"}), data_USDUAH.rename(columns={"Close": "Close_usd_uah"})], axis=1)
+    data_PLNUAH['Close'] = data_PLNUAH.apply(lambda x: 1 / x.Close_usd_pln * x.Close_usd_uah, axis=1)
 
     # Get old values
     data_EURUSD_old = data_EURUSD.iloc[0].Close
@@ -546,48 +317,47 @@ def make_currency_report():
     data_PLNUAH_last = data_PLNUAH.iloc[-1].Close
 
     # Calculate delta percent
-    vals = pd.DataFrame()
-    vals = vals.append({'pair_name': 'EUR/USD', 'old_elem': data_EURUSD_old, 'last_elem': data_EURUSD_last}, ignore_index=True)
-    vals = vals.append({'pair_name': 'USD/PLN', 'old_elem': data_USDPLN_old, 'last_elem': data_USDPLN_last}, ignore_index=True)
-    vals = vals.append({'pair_name': 'USD/UAH', 'old_elem': data_USDUAH_old, 'last_elem': data_USDUAH_last}, ignore_index=True)
-    vals = vals.append({'pair_name': 'PLN/UAH', 'old_elem': data_PLNUAH_old, 'last_elem': data_PLNUAH_last}, ignore_index=True)
+    new_rows = pd.DataFrame([
+        {'pair_name': 'EUR/USD', 'old_elem': data_EURUSD_old, 'last_elem': data_EURUSD_last},
+        {'pair_name': 'USD/PLN', 'old_elem': data_USDPLN_old, 'last_elem': data_USDPLN_last},
+        {'pair_name': 'USD/UAH', 'old_elem': data_USDUAH_old, 'last_elem': data_USDUAH_last},
+        {'pair_name': 'PLN/UAH', 'old_elem': data_PLNUAH_old, 'last_elem': data_PLNUAH_last}
+    ])
 
+    vals = pd.concat([pd.DataFrame(), new_rows], ignore_index=True)
     vals['delta'] = vals.apply(lambda x: (x.last_elem - x.old_elem), axis=1)
     vals['delta_percent'] = vals.apply(lambda x: (100 * x.delta / x.old_elem), axis=1)
 
     # Build percent growth strings
-    build_percent_growth_strings = '\n'.join([f'`{x.pair_name}: {x.last_elem:.2f} ({x.delta_percent:.2f}%)`' for x in vals.iloc])
+    build_percent_growth_strings = '\n'.join([f'`{x.pair_name}: {x.last_elem:.2f} ({x.delta_percent:.2f}%)`' for x in vals.itertuples()])
 
     # Draw chart
+    
+    # Define the plot function
     def plot_chart(ax, df, title):
         ax.plot(df.index.values, df['Close'].values)
         ax.set_title(title)
-        ax.grid(linestyle = '--', linewidth = 0.7)
-
-        # Rotate the x-axis labels so they don't overlap
+        
+        # Override grid settings for individual subplots
+        ax.grid(True, linestyle='--', linewidth=0.7)  # Ensure grid is applied only to the specific subplot
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=20)
 
     # Create the figure and subplots
-    fig = plt.figure(figsize=(12,8))
+    fig, ((ax11, ax12), (ax21, ax22)) = plt.subplots(2, 2, figsize=(12, 8))
 
-    fig.suptitle('Currencies for last 30 days', fontsize=20)
-
-    # Rename the axes for ease of use
-    ax11 = plt.subplot(2, 2, 1)
-    ax12 = plt.subplot(2, 2, 2)
-    ax21 = plt.subplot(2, 2, 3)
-    ax22 = plt.subplot(2, 2, 4)
-
+    # Plot each chart
     plot_chart(ax11, data_USDPLN, 'USD/PLN')
     plot_chart(ax12, data_EURUSD, 'EUR/USD')
     plot_chart(ax21, data_USDUAH, 'USD/UAH')
     plot_chart(ax22, data_PLNUAH, 'PLN/UAH')
 
+    # Adjust layout
     plt.tight_layout()
 
     # Save image
     image_path = f'img/{uuid.uuid4()}.png'
     plt.savefig(image_path, bbox_inches='tight')
+    plt.close()
     return image_path, build_percent_growth_strings
 
 
@@ -744,3 +514,5 @@ def make_alarm_map():
     plt.savefig(image_path, bbox_inches='tight')
     print(f'Image saved to {image_path}', file=sys.stderr)
     return image_path, alarms_dict
+
+make_currency_report()
