@@ -10,3 +10,9 @@ services:
     container_name: kodzuthon-container
     network_mode: host
     restart: always
+
+  whisper:
+    build: whisperApi/.
+    container_name: kodzuthon-whisper
+    network_mode: service:kodzuthon
+    restart: always

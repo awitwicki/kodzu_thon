@@ -1,4 +1,5 @@
 from __future__ import print_function
+import requests
 
 from telethon import TelegramClient, events, types, utils
 from telethon.tl.functions.account import UpdateProfileRequest
@@ -18,6 +19,8 @@ import re
 
 import khaleesi
 
+whisper_api_url = "http://localhost:5000/transcribe"
+
 api_id = os.environ['TELETHON_API_ID']
 api_hash = os.environ['TELETHON_API_HASH']
 
@@ -29,15 +32,15 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.13`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.14`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
         '`ppo [optional reply]` - PPO map,\n' \
         '`gum [reply]` - insert emojis,\n' \
         '`cum [reply]` - khaleese message,\n' \
-        '`tr [reply]` - translate message,\n' \
-        '`tr {text or [reply]}` - translate to latin,\n' \
+        '`tr [reply]` - translate message, OR transcrybe voice or video note\n' \
+        '`trl {text or [reply]}` - translate to latin,\n' \
         '`!s {search text}` - google text,\n' \
         '`!t` - imitation typing for 5 minutes,\n' \
         '`year` - year info,\n' \
@@ -179,10 +182,37 @@ async def handler(event: events.NewMessage.Event):
 @client.on(events.NewMessage(pattern=re.compile(r'^tr$', re.IGNORECASE), outgoing=True))
 async def handler(event: events.NewMessage.Event):
     if event.message.is_reply:
+        # If message is text
         msg = await event.message.get_reply_message()
-        await event.edit('Translating...')
-        reply_text = helpers.translate_text(msg.message)
-        await event.edit(reply_text)
+        if msg.text:
+            await event.edit('Translating...')
+            reply_text = helpers.translate_text(msg.message)
+            await event.edit(reply_text)
+        # If message is voice or video note
+        if msg.voice or msg.video_note:
+            await event.edit('Transcrybing...')
+
+            try:
+                file_path = await msg.download_media()
+
+                with open(file_path, "rb") as file:
+                    files = {"file": file}
+                    response = requests.post(whisper_api_url, files=files)
+
+                os.remove(file_path)
+
+                if response.status_code == 200:
+                    print("Transcrybed text:")
+                    reply_text = response.json().get("text")
+                    print(reply_text)
+                    await event.edit(reply_text)
+                else:
+                    print(f"Transcrybing error: {response.status_code}")
+                    print(response.json())
+                    await event.edit(response.json())
+            except Exception as e:
+                print(f"Transcrybing error: {e}")
+                await event.edit(f"Transcrybing error: {e}")
 
 
 # Translate message latin
