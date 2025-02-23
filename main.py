@@ -4,6 +4,7 @@ import requests
 from telethon import TelegramClient, events, types, utils
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import EditBannedRequest
+from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import ChatBannedRights, User, Channel, Chat
 
 import time
@@ -32,7 +33,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.14`\n\n' \
+    reply_text = f'**Kodzuthon help** `v1.14.1`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -75,26 +76,36 @@ async def handler(event: events.NewMessage.Event):
         emoji = params[1]
         count = int(params[2])
 
-        avaliable_emojis = "💩👍👎🔥🥰👏😁🤔🤯🤬😱😢🤩🤮🎉❤️"
+        available_emojis = "💩👍👎🔥🥰👏😁🤔🤯🤬😱😢🤩🤮🎉❤️"
 
-        if emoji not in avaliable_emojis :
-            await event.edit(avaliable_emojis)
+        if emoji not in available_emojis :
+            await event.edit(available_emojis)
+            return
+
+        if count > 1000:
+            await event.edit('Too much messages')
             return
 
         await event.edit("...")
         i = 0
 
         async for message in client.iter_messages(chat, from_user=reply_to_message.sender):
+            if i > count:
+                break
+            i += 1
+
             try:
                 reactions = message.reactions
                 if reactions and any(x.reaction == emoji for x in reactions.results):
                     continue
 
-                await client.send_reaction(chat, message, emoji)
-
-                if i > count:
-                    break
-                i += 1
+                await client(SendReactionRequest(
+                    peer=chat,
+                    msg_id=message.id,
+                    reaction=[types.ReactionEmoji(
+                        emoticon=emoji
+                    )]
+                ))
 
             except Exception as e:
                 print(e, file=sys.stderr)
@@ -186,7 +197,7 @@ async def handler(event: events.NewMessage.Event):
         msg = await event.message.get_reply_message()
         if msg.text:
             await event.edit('Translating...')
-            reply_text = helpers.translate_text(msg.message)
+            reply_text = await helpers.translate_text(msg.message)
             await event.edit(reply_text)
         # If message is voice or video note
         if msg.voice or msg.video_note:

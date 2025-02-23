@@ -44,7 +44,6 @@ symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍�
 
 def influx_query(query_str: str):
     try:
-        return
         url = 'http://localhost:8086/write?db=bots'
         headers = {'Content-Type': 'application/Text'}
 
@@ -113,10 +112,10 @@ def break_text(msg_text):
     return msg_text
 
 
-def translate_text(msg_text, dest = 'uk', silent_mode = False) -> str:
+async def translate_text(msg_text, dest='uk', silent_mode=False) -> str:
     try:
         translator = Translator()
-        result = translator.translate(msg_text, dest=dest)
+        result = await translator.translate(msg_text, dest=dest)
 
         return_text = '' if silent_mode else f'Translated from: {result.src}\n\n'
         return_text += f'{result.text}'
@@ -282,39 +281,23 @@ def get_ticker_recommendations(ticker):
 
 
 def make_currency_report():
-    date_now = datetime.datetime.now(timezone.utc)
-    start_date = date_now - datetime.timedelta(days=30)
-    end_date = datetime.datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    data_EURUSD = yf.download('EURUSD=X', start=start_date, end=end_date)
-    data_USDPLN = yf.download('USDPLN=X', start=start_date, end=end_date)
-    data_USDUAH = yf.download('USDUAH=X', start=start_date, end=end_date)
-
-    def simplify_ticker_dataframe(df):
-        df.columns = df.columns.droplevel(1)
-        df = pd.DataFrame(df[['Close']].values, index=df.index.values, columns=['Close'])
-        df.index.name = 'Date'
-        return df
-
-    data_EURUSD = simplify_ticker_dataframe(data_EURUSD)
-    data_USDPLN = simplify_ticker_dataframe(data_USDPLN)
-    data_USDUAH = simplify_ticker_dataframe(data_USDUAH)
+    market_data = yf.download(['EURUSD=X', 'USDPLN=X', 'USDUAH=X'], period='1mo')
 
     # Calculate PLN/UAH currency
-    data_PLNUAH = pd.concat([data_USDPLN.rename(columns={"Close": "Close_usd_pln"}), data_USDUAH.rename(columns={"Close": "Close_usd_uah"})], axis=1)
-    data_PLNUAH['Close'] = data_PLNUAH.apply(lambda x: 1 / x.Close_usd_pln * x.Close_usd_uah, axis=1)
+    df = market_data['Close']
+    df['PLNUAH=X'] = df.apply(lambda x: 1 / x['USDPLN=X'] * x['USDUAH=X'], axis=1)
 
     # Get old values
-    data_EURUSD_old = data_EURUSD.iloc[0].Close
-    data_USDUAH_old = data_USDUAH.iloc[0].Close
-    data_USDPLN_old = data_USDPLN.iloc[0].Close
-    data_PLNUAH_old = data_PLNUAH.iloc[0].Close
+    data_EURUSD_old = df['EURUSD=X'].iloc[0]
+    data_USDUAH_old = df['USDUAH=X'].iloc[0]
+    data_USDPLN_old = df['USDPLN=X'].iloc[0]
+    data_PLNUAH_old = df['PLNUAH=X'].iloc[0]
 
     # Get last actual values
-    data_EURUSD_last = data_EURUSD.iloc[-1].Close
-    data_USDUAH_last = data_USDUAH.iloc[-1].Close
-    data_USDPLN_last = data_USDPLN.iloc[-1].Close
-    data_PLNUAH_last = data_PLNUAH.iloc[-1].Close
+    data_EURUSD_last = df['EURUSD=X'].iloc[-1]
+    data_USDUAH_last = df['USDUAH=X'].iloc[-1]
+    data_USDPLN_last = df['USDPLN=X'].iloc[-1]
+    data_PLNUAH_last = df['PLNUAH=X'].iloc[-1]
 
     # Calculate delta percent
     new_rows = pd.DataFrame([
@@ -329,15 +312,16 @@ def make_currency_report():
     vals['delta_percent'] = vals.apply(lambda x: (100 * x.delta / x.old_elem), axis=1)
 
     # Build percent growth strings
-    build_percent_growth_strings = '\n'.join([f'`{x.pair_name}: {x.last_elem:.2f} ({x.delta_percent:.2f}%)`' for x in vals.itertuples()])
+    build_percent_growth_strings = '\n'.join(
+        [f'`{x.pair_name}: {x.last_elem:.2f} ({x.delta_percent:.2f}%)`' for x in vals.itertuples()])
 
     # Draw chart
-    
+
     # Define the plot function
     def plot_chart(ax, df, title):
-        ax.plot(df.index.values, df['Close'].values)
+        ax.plot(df.index.values, df.values)
         ax.set_title(title)
-        
+
         # Override grid settings for individual subplots
         ax.grid(True, linestyle='--', linewidth=0.7)  # Ensure grid is applied only to the specific subplot
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=20)
@@ -346,10 +330,10 @@ def make_currency_report():
     fig, ((ax11, ax12), (ax21, ax22)) = plt.subplots(2, 2, figsize=(12, 8))
 
     # Plot each chart
-    plot_chart(ax11, data_USDPLN, 'USD/PLN')
-    plot_chart(ax12, data_EURUSD, 'EUR/USD')
-    plot_chart(ax21, data_USDUAH, 'USD/UAH')
-    plot_chart(ax22, data_PLNUAH, 'PLN/UAH')
+    plot_chart(ax11, df['USDPLN=X'], 'USD/PLN')
+    plot_chart(ax12, df['EURUSD=X'], 'EUR/USD')
+    plot_chart(ax21, df['USDUAH=X'], 'USD/UAH')
+    plot_chart(ax22, df['PLNUAH=X'], 'PLN/UAH')
 
     # Adjust layout
     plt.tight_layout()
@@ -358,6 +342,7 @@ def make_currency_report():
     image_path = f'img/{uuid.uuid4()}.png'
     plt.savefig(image_path, bbox_inches='tight')
     plt.close()
+
     return image_path, build_percent_growth_strings
 
 
@@ -514,5 +499,3 @@ def make_alarm_map():
     plt.savefig(image_path, bbox_inches='tight')
     print(f'Image saved to {image_path}', file=sys.stderr)
     return image_path, alarms_dict
-
-make_currency_report()
