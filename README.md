@@ -40,4 +40,12 @@ After authorization push `Ctrl + C` for stop and type next command for restart c
 docker-compose up -d
 ```
 
-(optionally) OR before run app in docker You need to get `.session` file by authorize app manually on python3 machine.
+(optionall) OR before run app in docker You need to get `.session` file by authorize app manually on python3 machine.
+
+## Adding telethon .session file to docker volume manually
+
+1. CD to folder with .session file
+2. Create docker volume `docker volume create kodzu_thon_kodzuthon-session`
+3. Copy session to volume `docker run --rm -v "${PWD}:/from" -v kodzu_thon_kodzuthon-session:/to alpine cp /from/session_name.session /to/`
+
+Done. Now You can start docker compose project.

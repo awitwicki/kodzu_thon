@@ -4,7 +4,7 @@ services:
     build: .
     image: kodzuthon
     volumes:
-      - .:/app/
+      - kodzuthon-session:/app/session_data
     env_file:
     - .env
     container_name: kodzuthon-container
@@ -16,3 +16,6 @@ services:
     container_name: kodzuthon-whisper
     network_mode: service:kodzuthon
     restart: always
+
+volumes:
+  kodzuthon-session:

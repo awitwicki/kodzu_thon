@@ -20,12 +20,14 @@ import re
 
 import khaleesi
 
+KODZIUTHON_VERSION = 'v1.15.0'
+
 whisper_api_url = "http://localhost:5000/transcribe"
 
 api_id = os.environ['TELETHON_API_ID']
 api_hash = os.environ['TELETHON_API_HASH']
 
-client = TelegramClient('session_name', api_id, api_hash)
+client = TelegramClient('session_data/session_name', api_id, api_hash)
 client.start()
 
 messages_cache = {}
@@ -33,7 +35,7 @@ messages_cache = {}
 # Help
 @client.on(events.NewMessage(pattern='^!h$', outgoing=True))
 async def help(event: events.NewMessage.Event):
-    reply_text = f'**Kodzuthon help** `v1.14.1`\n\n' \
+    reply_text = f'**Kodzuthon help** `{KODZIUTHON_VERSION}`\n\n' \
         '`scan [optional reply]` - scan message or chat,\n' \
         '`scans [optional reply]` - silently scan message or chat,\n' \
         '`scraps (chat)` - silently scrap all members to .csv,\n' \
@@ -141,7 +143,7 @@ async def handler(event: events.NewMessage.Event):
     if is_success:
         await msg.delete()
         await client.send_file('me', csv_path_or_error, caption=csv_path_or_error)
-        os.remove('csv_path')
+        helpers.remove_file(csv_path_or_error)
     else:
         await msg.edit(csv_path_or_error)
 
@@ -165,6 +167,7 @@ async def handler(event: events.NewMessage.Event):
 
         await event.delete()
         await client.send_file(chat, img_name, caption=text, reply_to=event.message.reply_to_msg_id)
+        helpers.remove_file(img_name)
 
     except Exception as e:
         await event.edit('Fail')
@@ -577,6 +580,7 @@ async def handler(event: events.NewMessage.Event):
 
         await event.delete()
         await client.send_file(chat, img_name, caption=text)
+        helpers.remove_file(img_name)
 
     except Exception as e:
         print(e, file=sys.stderr)

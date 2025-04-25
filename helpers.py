@@ -499,3 +499,10 @@ def make_alarm_map():
     plt.savefig(image_path, bbox_inches='tight')
     print(f'Image saved to {image_path}', file=sys.stderr)
     return image_path, alarms_dict
+
+
+def remove_file(path):
+    try:
+        os.remove(path)
+    except Exception as e:
+        print(e, file=sys.stderr)
