@@ -33,8 +33,6 @@ from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
 from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
 
-city_name = os.environ.get('TELETHON_CITY', 'Odessa')
-
 # create folders
 if not os.path.exists('img'):
     os.makedirs('img')

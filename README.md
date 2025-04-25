@@ -18,8 +18,6 @@
 
 Set environment variables for API keys:
 
-* `TELETHON_CITY` (name of your city)
-
 * `TELETHON_API_HASH` (from step 1)
 
 * `TELETHON_API_ID` (from step 1)
@@ -31,7 +29,7 @@ in system environment for simple run, or in `.env` file for docker-compose using
 The first run requires authorization in the console:
 
 ```
-docker-compose run
+TODO
 ```
 
 After authorization push `Ctrl + C` for stop and type next command for restart container in normal mode:
@@ -40,9 +38,8 @@ After authorization push `Ctrl + C` for stop and type next command for restart c
 docker-compose up -d
 ```
 
-(optionall) OR before run app in docker You need to get `.session` file by authorize app manually on python3 machine.
 
-## Adding telethon .session file to docker volume manually
+## (optional) adding telethon .session file to docker volume manually (to run containers without initial authorization)
 
 1. CD to folder with .session file
 2. Create docker volume `docker volume create kodzu_thon_kodzuthon-session`
