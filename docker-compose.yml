@@ -4,7 +4,7 @@ services:
     build: .
     image: kodzuthon
     volumes:
-      - kodzuthon-session:/app/session_data.session_name.session
+      - kodzuthon-session:/app/session_data
     env_file:
     - .env
     container_name: kodzuthon-container

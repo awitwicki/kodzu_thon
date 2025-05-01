@@ -28,9 +28,9 @@ in system environment for simple run, or in `.env` file for docker-compose using
 
 The first run requires authorization in the console:
 
-```
-TODO
-```
+`docker-compose run -it --rm  kodzuthon`
+
+Provide your credentials to log in in telegram
 
 After authorization push `Ctrl + C` for stop and type next command for restart container in normal mode:
 
