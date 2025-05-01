@@ -22,7 +22,7 @@ import khaleesi
 
 KODZIUTHON_VERSION = 'v1.15.0'
 
-whisper_api_url = "http://localhost:5000/transcribe"
+whisper_api_url = "http://localhost:4999/transcribe"
 
 api_id = os.environ['TELETHON_API_ID']
 api_hash = os.environ['TELETHON_API_HASH']
