@@ -20,7 +20,7 @@ import re
 
 import khaleesi
 
-KODZIUTHON_VERSION = 'v1.15.0'
+KODZIUTHON_VERSION = 'v1.15.1'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 

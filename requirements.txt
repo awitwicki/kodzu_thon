@@ -5,7 +5,7 @@ googlesearch-python==1.2.5
 googletrans==4.0.2
 gTTS==2.5.4
 matplotlib==3.8.4
-telethon==1.37.0
+telethon==1.41.1
 numpy==1.26.4
 pandas==2.2.3
 qbstyles==0.1.4
