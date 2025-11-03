@@ -20,7 +20,7 @@ import re
 
 import khaleesi
 
-KODZIUTHON_VERSION = 'v1.15.2'
+KODZIUTHON_VERSION = 'v1.15.4'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -318,7 +318,7 @@ async def handler_autoresponder(event: events.NewMessage.Event):
     if event.is_group:
         try:
             msg = event.message
-            chat_title = chat.title.replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
+            chat_title = chat.title
 
             user_name = '@' + msg.sender.username if msg.sender.username else msg.sender.username
             full_name = 'unknown'
@@ -338,9 +338,7 @@ async def handler_autoresponder(event: events.NewMessage.Event):
                 chat: Chat = msg.sender
                 full_name = chat.title
 
-
             user_name = user_name if user_name else full_name
-            user_name = user_name.strip().replace('\\', '\\\\').replace(' ', '\ ').replace('=', '\=')
 
             chat_id = chat.id
             user_id = msg.sender.id
@@ -369,7 +367,7 @@ async def handler_autoresponder(event: events.NewMessage.Event):
                     'sender_id': user_id,
                     'sender_name': user_name,
                     'chat_title': chat_title,
-                    'text': msg.text.replace('\\', '\\\\').replace('"', '\\"')
+                    'text': msg.text
                 }
 
                 cached_chat = {
