@@ -354,7 +354,7 @@ async def handler_autoresponder(event: events.NewMessage.Event):
             }
 
             fields_dict = {
-                "income_messages": 1
+                "income_messages": 1.0
             }
 
             helpers.influx_query(tags_dict, fields_dict)
