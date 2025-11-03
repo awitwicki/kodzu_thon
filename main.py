@@ -20,7 +20,7 @@ import re
 
 import khaleesi
 
-KODZIUTHON_VERSION = 'v1.15.1'
+KODZIUTHON_VERSION = 'v1.15.2'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -286,7 +286,21 @@ async def handler(event: events.MessageDeleted.Event):
             if msg:
                 message_text = msg["text"]
                 print(f'deleted message {_message_id} in chat {chat_id}, user: {msg["sender_id"]} {msg["sender_name"]}, text: {msg["text"]}', file=sys.stderr)
-                helpers.influx_query(f'bots,botname=kodzuthon,chatname={msg["chat_title"]},chat_id={chat_id},user_id={msg["sender_id"]},user_name={msg["sender_name"]},message_type=deleted_text_message deleted_message_text=\"{message_text}\"')
+
+                tags_dict = {
+                    "botname": "kodzuthon",
+                    "chatname": msg["chat_title"],
+                    "chat_id": chat_id,
+                    "user_id": msg["sender_id"],
+                    "user_name": msg["sender_name"],
+                    "message_type": "deleted_text_message"
+                }
+
+                fields_dict = {
+                    "deleted_message_text": message_text
+                }
+
+                helpers.influx_query(tags_dict, fields_dict)
 
     except Exception as e:
         print(e, file=sys.stderr)
@@ -330,7 +344,21 @@ async def handler_autoresponder(event: events.NewMessage.Event):
 
             chat_id = chat.id
             user_id = msg.sender.id
-            helpers.influx_query(f'bots,botname=kodzuthon,chatname={chat_title},chat_id={chat_id},user_id={user_id},user_name={user_name} income_messages=1')
+
+            tags_dict = {
+                "botname": "kodzuthon",
+                "chatname": chat_title,
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "user_name": user_name,
+            }
+
+            fields_dict = {
+                "income_messages": 1
+            }
+
+            helpers.influx_query(tags_dict, fields_dict)
+
 
             # Add to messages cache
             # If sender is not bot

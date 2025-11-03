@@ -1,10 +1,8 @@
 from __future__ import print_function
-from logging import exception
 
 import sys
 import os
 import datetime
-from datetime import timezone
 import requests
 import json
 import uuid
@@ -14,8 +12,6 @@ from time import sleep
 import cachetools.func
 from googletrans import Translator
 from googlesearch import search
-import numpy as np
-from matplotlib import pyplot as plt
 import pandas as pd
 
 from mpl_toolkits.basemap import Basemap
@@ -31,7 +27,14 @@ mpl_style(dark=True)
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, ChatParticipantCreator, ChannelParticipantCreator, ChannelParticipantsSearch
-from telethon.tl.custom.participantpermissions import ParticipantPermissions as ParticipantPermissions
+from influxdb import InfluxDBClient
+
+# Connect to InfluxDB
+client = InfluxDBClient(host='localhost', port=8086)
+influx_db_name = 'bots'
+# client.create_database(influx_db_name)
+client.switch_database(influx_db_name)
+
 
 # create folders
 if not os.path.exists('img'):
@@ -40,12 +43,18 @@ if not os.path.exists('img'):
 
 symbols = '😂👍😉😭🧐🤷‍♂️😡💦💩😎🤯🤬🤡👨‍👨‍👦👨‍👨‍👦‍👦'
 
-def influx_query(query_str: str):
+def influx_query(tags_dict: dict, fields_dict: dict):
     try:
-        url = 'http://localhost:8086/write?db=bots'
-        headers = {'Content-Type': 'application/Text'}
+        json_body = [
+            {
+                "measurement": "bots",
+                "tags": tags_dict,
+                "fields": fields_dict
+            }
+        ]
 
-        x = requests.post(url, data=query_str.encode('utf-8'), headers=headers)
+        client.write_points(json_body)
+
     except Exception as e:
         print(e)
 
