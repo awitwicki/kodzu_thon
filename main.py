@@ -20,7 +20,7 @@ import re
 
 import khaleesi
 
-KODZIUTHON_VERSION = 'v1.15.5'
+KODZIUTHON_VERSION = 'v1.15.6'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -318,8 +318,10 @@ async def handler_autoresponder(event: events.NewMessage.Event):
     if event.is_group:
         try:
             msg = event.message
-            chat_title = chat.title
 
+            chat_title = chat.title
+            chat_id = chat.id
+            user_id = None
             user_name = None
             full_name = 'unknown'
 
@@ -334,18 +336,20 @@ async def handler_autoresponder(event: events.NewMessage.Event):
 
                 full_name = ' '.join([first_name, last_name])
 
+                user_id = user.id
+
             if type(msg.sender) is Channel:
                 channel: Channel = msg.sender
                 full_name = channel.title
+                user_id = channel.id
 
             if type(msg.sender) is Chat:
                 chat: Chat = msg.sender
                 full_name = chat.title
+                user_id = chat.id
 
             user_name = user_name if user_name else full_name
 
-            chat_id = chat.id
-            user_id = msg.sender.id
 
             tags_dict = {
                 "botname": "kodzuthon",
