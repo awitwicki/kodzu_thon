@@ -20,7 +20,7 @@ import re
 
 import khaleesi
 
-KODZIUTHON_VERSION = 'v1.15.6'
+KODZIUTHON_VERSION = 'v1.15.7'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -319,6 +319,9 @@ async def handler_autoresponder(event: events.NewMessage.Event):
         try:
             msg = event.message
 
+            if not msg.sender:
+                return
+
             chat_title = chat.title
             chat_id = chat.id
             user_id = None
@@ -364,7 +367,6 @@ async def handler_autoresponder(event: events.NewMessage.Event):
             }
 
             helpers.influx_query(tags_dict, fields_dict)
-
 
             # Add to messages cache
             # If sender is not bot

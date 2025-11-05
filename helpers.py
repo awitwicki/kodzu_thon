@@ -56,7 +56,7 @@ def influx_query(tags_dict: dict, fields_dict: dict):
         client.write_points(json_body)
 
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
 
 
 def get_btc():
