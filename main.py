@@ -21,7 +21,7 @@ import re
 import khaleesi
 import google.generativeai as genai
 
-KODZIUTHON_VERSION = 'v1.16'
+KODZIUTHON_VERSION = 'v1.17'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -60,7 +60,8 @@ async def help(event: events.NewMessage.Event):
         '`curr` - currencies report,\n' \
         '`btc` - bitcoin stock price.\n' \
         '`!lk {emoji} {count} [reply]` - reaction messages attack,\n' \
-        '`ai {prompt}` - ask Gemini AI\n\n' \
+        '`ai {prompt}` - ask Gemini AI\n' \
+        '`summ [reply]` - summarize messages from replied to newest\n\n' \
         '[github](https://github.com/awitwicki/kodzu_thon)'
 
     await event.edit(reply_text)
@@ -100,6 +101,72 @@ async def handler(event: events.NewMessage.Event):
     except Exception as e:
         await event.edit(f'Error: {str(e)}')
         print(e, file=sys.stderr)
+
+
+# Summarize messages from a point
+@client.on(events.NewMessage(pattern='^summ$', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        if not event.message.is_reply:
+            await event.edit('Reply to a message to summarize from')
+            return
+        
+        chat = await event.get_chat()
+        reply_to_message = await event.message.get_reply_message()
+        
+        await event.edit('Collecting messages...')
+        
+        # Collect all messages from replied message to newest
+        messages_text = []
+        message_count = 0
+        max_messages = 1000
+        
+        async for message in client.iter_messages(chat, min_id=reply_to_message.id - 1):
+            if message_count >= max_messages:
+                break
+            
+            # Get text or caption
+            text = message.text if message.text else None
+            if text:
+                messages_text.append(text)
+                message_count += 1
+        
+        if not messages_text:
+            await event.edit('No messages found to summarize')
+            return
+        
+        await event.edit(f'Summarizing {message_count} messages...')
+        
+        messages_text.reverse()
+
+        # Combine all messages
+        combined_text = '\n---\n'.join(messages_text)
+        
+        # Prepare prompt for Gemini
+        prompt = f'Please provide a concise brief summary of the following messages in ukrainian language:\n\n{combined_text}'
+        
+        # Get API key from environment
+        api_key = os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            await event.edit('Error: GEMINI_API_KEY not set in environment')
+            return
+        
+        # Initialize Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        # Get response from Gemini
+        response = model.generate_content(prompt)
+        result = response.text
+        
+        # Edit message with result
+        summary_text = f'**Summary ({message_count} messages):**\n\n{result}'
+        await event.edit(summary_text)
+        
+    except Exception as e:
+        await event.edit(f'Error: {str(e)}')
+        print(e, file=sys.stderr)
+
 
 # Like all user messages
 @client.on(events.NewMessage(pattern='^!lk', outgoing=True))
