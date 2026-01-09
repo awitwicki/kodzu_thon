@@ -1,4 +1,4 @@
-FROM python:3.9-buster
+FROM python:3.12-trixie
 WORKDIR /app
 
 # Install ffmpeg
