@@ -30,7 +30,7 @@ from telethon.tl.types import Channel, User, ChannelParticipantsAdmins, ChatPart
 from influxdb import InfluxDBClient
 
 # Connect to InfluxDB
-client = InfluxDBClient(host='localhost', port=8086)
+client = InfluxDBClient(host='monitoring_influxdb', port=8086)
 influx_db_name = 'bots'
 # client.create_database(influx_db_name)
 client.switch_database(influx_db_name)

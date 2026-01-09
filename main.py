@@ -21,7 +21,7 @@ import re
 import khaleesi
 import google.generativeai as genai
 
-KODZIUTHON_VERSION = 'v1.17'
+KODZIUTHON_VERSION = 'v1.16.1'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
