@@ -8,14 +8,21 @@ services:
     env_file:
     - .env
     container_name: kodzuthon-container
-    network_mode: host
+    networks:
+      - kodzuverse
     restart: unless-stopped
 
   whisper:
     build: whisperApi/.
     container_name: kodzuthon-whisper
-    network_mode: service:kodzuthon
+    networks:
+      - kodzuverse
     restart: unless-stopped
+
+networks:
+  kodzuverse:
+    name: kodzuverse_network
+    external: true
 
 volumes:
   kodzuthon-session:
