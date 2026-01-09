@@ -19,8 +19,9 @@ import random
 import re
 
 import khaleesi
+import google.generativeai as genai
 
-KODZIUTHON_VERSION = 'v1.15.8'
+KODZIUTHON_VERSION = 'v1.16'
 
 whisper_api_url = "http://localhost:4999/transcribe"
 
@@ -58,10 +59,47 @@ async def help(event: events.NewMessage.Event):
         '`ніх [optional reply]` - damn video,\n' \
         '`curr` - currencies report,\n' \
         '`btc` - bitcoin stock price.\n' \
-        '`!lk {emoji} {count} [reply]` - reaction messages attack,\n\n' \
+        '`!lk {emoji} {count} [reply]` - reaction messages attack,\n' \
+        '`ai {prompt}` - ask Gemini AI\n\n' \
         '[github](https://github.com/awitwicki/kodzu_thon)'
 
     await event.edit(reply_text)
+
+
+# AI with Gemini
+@client.on(events.NewMessage(pattern='^ai ', outgoing=True))
+async def handler(event: events.NewMessage.Event):
+    try:
+        # Extract prompt from message
+        prompt = event.message.text.replace('ai ', '', 1).strip()
+        
+        if not prompt:
+            await event.edit('Please provide a prompt')
+            return
+        
+        # Show loading message
+        await event.edit(f'Loading...')
+        
+        # Get API key from environment
+        api_key = os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            await event.edit(f'ai {prompt}\nError: GEMINI_API_KEY not set in environment')
+            return
+        
+        # Initialize Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        # Get response from Gemini
+        response = model.generate_content(prompt)
+        result = response.text
+        
+        # Edit message with result
+        await event.edit(result)
+        
+    except Exception as e:
+        await event.edit(f'Error: {str(e)}')
+        print(e, file=sys.stderr)
 
 # Like all user messages
 @client.on(events.NewMessage(pattern='^!lk', outgoing=True))

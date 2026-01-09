@@ -22,6 +22,8 @@ Set environment variables for API keys:
 
 * `TELETHON_API_ID` (from step 1)
 
+* `GEMINI_API_KEY` [Gemini Api key](https://aistudio.google.com/apikey) for ai messages. 
+
 in system environment for simple run, or in `.env` file for docker-compose using.
 
 ### 3. Docker compose
