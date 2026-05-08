@@ -53,7 +53,7 @@ async def _autoresponder_logic(event, client, ctx) -> None:
             fields={"income_messages": 1.0},
         )
 
-        if msg.text and not msg.sender.bot:
+        if msg.text and isinstance(msg.sender, User) and not msg.sender.bot:
             ctx.message_cache.add(
                 chat_id=chat_id,
                 message_id=msg.id,
