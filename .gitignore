@@ -1,4 +1,12 @@
-/__pycache__
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
 *.session*
 /media/temp
 *.json
@@ -8,5 +16,6 @@
 .env
 
 _*
+!__*.py
 /.idea
 .DS_Store

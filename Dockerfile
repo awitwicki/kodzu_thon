@@ -1,17 +1,14 @@
 FROM python:3.12-trixie
 WORKDIR /app
 
-# Install ffmpeg
-RUN apt-get -y update
-RUN apt-get install -y ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg libgeos-dev \
+ && rm -rf /var/lib/apt/lists/*
 
-# Prepare for install geos
-RUN apt install -y libgeos-dev
+COPY README.md pyproject.toml ./
+COPY src/ ./src/
+RUN pip3 install --no-cache-dir .
 
-# Install python requirements
-COPY ./requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+COPY media/ ./media/
 
-COPY . .
-
-CMD ["python","-u","main.py"]
+CMD ["python", "-u", "-m", "kodzu_thon"]
