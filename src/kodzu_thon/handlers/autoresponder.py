@@ -3,17 +3,9 @@ import sys
 from telethon import events
 from telethon.tl.types import Channel, Chat, User
 
-_PRIVATE_VOICE_REPLY = (
-    "Голосове повідомлення не доставлено, бо користувач заблокував цю опцію. "  # noqa: RUF001
-    "Це повідомлення надіслано автоматично."
-)
-
 
 async def _autoresponder_logic(event, client, ctx) -> None:
     chat = event.chat if event.chat else (await event.get_chat())
-
-    if event.is_private and event.voice:
-        await client.send_message(chat, _PRIVATE_VOICE_REPLY, reply_to=event.message.id)
 
     if not event.is_group:
         return
