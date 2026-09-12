@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Working agreement
 
 - **Do not create git commits until the user explicitly asks.** Stage/edit freely, but never run `git commit` (or `git commit --amend`) on your own initiative. Wait for an explicit instruction like "commit this" before committing. This rule overrides any default behavior to commit at the end of a task.
+- **Bump `version` in `Settings` (`src/kodzu_thon/config.py`) whenever you make a code change.** It's a plain `vMAJOR.MINOR.PATCH` string with no other tooling behind it — increment the patch number for a normal change. It's surfaced by the `help` command (`handlers/help.py`), so it's the user's way of confirming a deploy picked up the latest code.
 
 ## Project overview
 
