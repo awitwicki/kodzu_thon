@@ -12,14 +12,12 @@ from kodzu_thon.services.message_cache import MessageCache
 from kodzu_thon.services.observability import InfluxWriter
 from kodzu_thon.services.translator import Translator
 from kodzu_thon.services.two_hundred import TwoHundredService
-from kodzu_thon.services.whisper import WhisperClient
 from kodzu_thon.services.year_progress import get_year_progress
 
 
 @dataclass
 class AppContext:
     gemini: GeminiClient
-    whisper: WhisperClient
     translator: Translator
     air_alarm: AirAlarmService
     influx: InfluxWriter
@@ -34,7 +32,6 @@ def build_app() -> tuple[TelegramClient, AppContext]:
     client = TelegramClient(settings.session_path, settings.api_id, settings.api_hash)
     ctx = AppContext(
         gemini=GeminiClient(settings.gemini_api_key),
-        whisper=WhisperClient(settings.whisper_url),
         translator=Translator(),
         air_alarm=AirAlarmService(settings.geojson_path, img_dir=settings.img_dir),
         influx=InfluxWriter(settings.influx_host, settings.influx_port, settings.influx_db),

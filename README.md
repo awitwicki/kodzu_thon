@@ -41,7 +41,6 @@ Required:
 - `GEMINI_API_KEY`: Your Gemini API key (for ai/summarize commands)
 
 Optional:
-- `WHISPER_API_URL`: Whisper transcription endpoint (default: `http://whisper:4999/transcribe`)
 - `INFLUX_HOST`: InfluxDB hostname (default: `monitoring_influxdb`)
 - `INFLUX_PORT`: InfluxDB port (default: `8086`)
 - `SESSION_PATH`: Path to Telethon session file (default: `session_data/session_name`)

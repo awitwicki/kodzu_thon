@@ -10,8 +10,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `kodzu_thon` is a Telethon-based Telegram **userbot** (runs as the user's own account, not a bot account). It listens for outgoing messages matching specific patterns and replaces them with command output — every handler uses `outgoing=True` and edits, deletes, or replies to the user's own message.
 
-Companion service `whisperApi/` is a separate Docker image providing a `/transcribe` HTTP endpoint used by the `tr` command for voice/video-note transcription.
-
 ## Run / build
 
 First-time login (interactive — prompts for phone, code, optionally 2FA, and writes a `.session` file into the `kodzuthon-session` volume):
@@ -69,7 +67,6 @@ Loads Ukrainian oblast polygons from `media/ukraine-with-regions_1530.geojson` a
 
 - `session_data/session_name.session` is the Telegram auth state — kept in the `kodzuthon-session` Docker volume. Losing it means re-running interactive login.
 - `.env` (gitignored) supplies `TELETHON_API_ID`, `TELETHON_API_HASH`, and `GEMINI_API_KEY`.
-- Whisper container is reached at the URL in `WHISPER_API_URL` (inside Docker, this should resolve via service name).
 
 ## Testing
 

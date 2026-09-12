@@ -8,7 +8,6 @@ def test_build_app_constructs_context(mocker, monkeypatch):
 
     mocker.patch("kodzu_thon.app.TelegramClient")
     mocker.patch("kodzu_thon.app.GeminiClient")
-    mocker.patch("kodzu_thon.app.WhisperClient")
     mocker.patch("kodzu_thon.app.Translator")
     mocker.patch("kodzu_thon.app.AirAlarmService")
     mocker.patch("kodzu_thon.app.InfluxWriter")

@@ -46,7 +46,6 @@ def fake_settings():
     s.api_id = 1
     s.api_hash = "hash"
     s.gemini_api_key = "gemini-key"
-    s.whisper_url = "http://whisper:4999/transcribe"
     s.influx_host = "monitoring_influxdb"
     s.influx_port = 8086
     s.influx_db = "bots"
@@ -62,7 +61,6 @@ def fake_settings():
 def fake_ctx(fake_settings):
     ctx = MagicMock()
     ctx.gemini = AsyncMock()
-    ctx.whisper = AsyncMock()
     ctx.translator = AsyncMock()
     ctx.air_alarm = MagicMock()
     ctx.influx = MagicMock()

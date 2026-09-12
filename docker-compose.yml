@@ -12,13 +12,6 @@ services:
       - kodzuverse
     restart: unless-stopped
 
-  whisper:
-    build: whisperApi/.
-    container_name: kodzuthon-whisper
-    networks:
-      - kodzuverse
-    restart: unless-stopped
-
 networks:
   kodzuverse:
     name: kodzuverse_network

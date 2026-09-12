@@ -2,7 +2,7 @@ import re
 
 from telethon import events
 
-from kodzu_thon.services.whisper import WhisperError
+from kodzu_thon.services.gemini import GeminiError
 from kodzu_thon.utils.files import safe_remove
 
 HELP = [("tr [reply]", "translate message, OR transcrybe voice or video note")]
@@ -16,10 +16,11 @@ async def _tr_logic(event, ctx) -> None:
     if msg.voice or msg.video_note:
         await event.edit("Transcrybing...")
         path = await msg.download_media()
+        mime_type = "video/mp4" if msg.video_note else "audio/ogg"
         try:
-            text = await ctx.whisper.transcribe(path)
+            text = await ctx.gemini.transcribe(path, mime_type=mime_type)
             await event.edit(text)
-        except WhisperError as e:
+        except GeminiError as e:
             await event.edit(f"Transcrybing error: {e}")
         finally:
             safe_remove(path)
