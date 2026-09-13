@@ -6,6 +6,7 @@ from telethon import events
 from kodzu_thon.utils.files import safe_remove
 
 HELP = [("ppo [optional reply]", "PPO map")]
+COMMAND_PATTERNS = ["^ppo$"]
 
 
 def _build_caption(alarms: dict[str, bool]) -> str:

@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import random
 import sys
 import time
@@ -6,9 +7,13 @@ import time
 from telethon import events
 
 HELP = [("🦔", "nice cartoon"), ("loading", "loading animation")]
+COMMAND_PATTERNS = ["^🦔$", "^loading$"]
 
 
 async def _hedgehog_logic(event, ctx) -> None:
+    now = datetime.datetime.now(event.message.date.tzinfo)
+    if (now - event.message.date).seconds >= 60:
+        return
     for i in range(19):
         await event.edit("🍎" * (18 - i) + "🦔")
         await asyncio.sleep(0.5)
@@ -16,6 +21,10 @@ async def _hedgehog_logic(event, ctx) -> None:
 
 async def _loading_logic(event, ctx) -> None:
     try:
+        now = datetime.datetime.now(event.message.date.tzinfo)
+        if (now - event.message.date).seconds >= 60:
+            return
+
         percentage = 0
         while percentage < 100:
             temp = max(100 - percentage, 5)

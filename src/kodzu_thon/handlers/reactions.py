@@ -1,15 +1,21 @@
+import datetime
 import sys
 
 from telethon import events, types
 from telethon.tl.functions.messages import SendReactionRequest
 
 HELP = [("!lk {emoji} {count} [reply]", "reaction messages attack")]
+COMMAND_PATTERNS = ["^!lk"]
 _AVAILABLE = "💩👍👎🔥🥰👏😁🤔🤯🤬😱😢🤩🤮🎉❤️"
 _MAX_COUNT = 1000
 
 
 async def _reactions_logic(event, client, ctx) -> None:
     try:
+        now = datetime.datetime.now(event.message.date.tzinfo)
+        if (now - event.message.date).seconds >= 60:
+            return
+
         reply = await event.get_reply_message()
         if not reply:
             await event.delete()

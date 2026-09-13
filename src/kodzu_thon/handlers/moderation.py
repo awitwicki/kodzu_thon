@@ -6,10 +6,15 @@ from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.types import ChatBannedRights
 
 HELP = [("!m {20} {m/h/d}", "mute someone for {20} {m} - minutes")]
+COMMAND_PATTERNS = [r"^!m"]
 _UNIT_TO_SECS = {"m": (60, "minuts"), "h": (3600, "ours"), "d": (86400, "deys")}
 
 
 async def _mute_logic(event, client, ctx) -> None:
+    now = datetime.datetime.now(event.message.date.tzinfo)
+    if (now - event.message.date).seconds >= 60:
+        return
+
     reply = await event.get_reply_message()
     if not reply:
         await event.delete()

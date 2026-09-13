@@ -18,8 +18,10 @@ class Settings:
     geojson_path: str = "media/ukraine-with-regions_1530.geojson"
     media_dir: str = "media"
     img_dir: str = "img"
-    version: str = "v1.18.5"
+    version: str = "v1.19.1"
     bio_update_interval_s: int = 300
+    database_url: str | None = None
+    record_media_max_bytes: int = 5 * 1024 * 1024
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -36,4 +38,8 @@ class Settings:
             session_path=os.environ.get("SESSION_PATH", cls.session_path),
             influx_host=os.environ.get("INFLUX_HOST", cls.influx_host),
             influx_port=int(os.environ.get("INFLUX_PORT", cls.influx_port)),
+            database_url=os.environ.get("DATABASE_URL") or None,
+            record_media_max_bytes=int(
+                os.environ.get("RECORD_MEDIA_MAX_BYTES", cls.record_media_max_bytes)
+            ),
         )

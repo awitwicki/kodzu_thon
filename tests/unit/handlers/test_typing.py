@@ -1,6 +1,18 @@
+import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from kodzu_thon.handlers.typing import _typing_logic
+
+
+async def test_stale_message_ignored(fake_event, fake_client, fake_ctx, mocker):
+    fake_event.message.date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=5)
+    sleep = mocker.patch("kodzu_thon.handlers.typing.asyncio.sleep", new_callable=AsyncMock)
+
+    await _typing_logic(fake_event, fake_client, fake_ctx)
+
+    fake_event.delete.assert_not_awaited()
+    fake_client.action.assert_not_called()
+    sleep.assert_not_awaited()
 
 
 async def test_typing_uses_action_and_sleeps(fake_event, fake_client, fake_ctx, mocker):

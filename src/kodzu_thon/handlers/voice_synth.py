@@ -11,6 +11,7 @@ HELP = [
     ("!a {text or [reply]}", "generate speech"),
     ("!v {text or [reply]}", "video speech"),
 ]
+COMMAND_PATTERNS = ["^!a", "^!v"]
 
 
 async def _voice_logic(event, client, ctx) -> None:

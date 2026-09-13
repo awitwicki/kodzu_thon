@@ -1,6 +1,7 @@
 from telethon import events
 
 HELP = [("summ [reply]", "summarize messages from replied to newest")]
+COMMAND_PATTERNS = ["^summ$"]
 _MAX_MESSAGES = 1000
 _PROMPT_TEMPLATE = (
     "Please provide a concise brief summary of the following messages "

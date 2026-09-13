@@ -41,7 +41,7 @@ The codebase is organized in three layers under `src/kodzu_thon/`:
 
 ### Application context and configuration
 
-`app.py` defines `AppContext`, which holds all mutable state and collaborators (InfluxDB client, message cache, etc.). Configuration is loaded once at startup via `config.Settings.from_env()` and passed to the context.
+`app.py` defines `AppContext`, which holds all mutable state and collaborators (InfluxDB client, message store, media fetcher, etc.). Configuration is loaded once at startup via `config.Settings.from_env()` and passed to the context.
 
 ### Entry point
 
@@ -49,12 +49,32 @@ The codebase is organized in three layers under `src/kodzu_thon/`:
 
 ### Observability sink (`services/observability.py`)
 
-Writes to InfluxDB measurement `bots` in DB `bots`. Two events are recorded:
+Writes to InfluxDB measurement `bots` in DB `bots`: one `income_messages: 1.0` point per
+incoming group message (via `handlers/autoresponder.py`) with chat/user tags. Nothing else.
 
-- Incoming group messages (via `handlers/autoresponder.py`) → writes `income_messages: 1.0` plus chat/user tags, caches message text.
-- Message deletions (via `handlers/deletion_log.py`) → looks up cached message and writes `deleted_text_message` event with original text.
+### Message recorder (`handlers/recorder.py`, `services/message_store.py`)
 
-The in-memory message cache is process-local and unbounded; it resets on restart.
+With `DATABASE_URL` set, every message, edit and deletion from groups, supergroups and
+channels is written to PostgreSQL (private chats never are; the bot's own commands are
+skipped via each handler module's `COMMAND_PATTERNS`). Flow:
+
+- `handlers/recorder.py` → `services/message_extract.py` (pure Telethon → dataclass) →
+  `MessageStore.enqueue` (bounded `asyncio.Queue`) → background writer task → asyncpg.
+- `services/media_fetcher.py` downloads media ≤ `RECORD_MEDIA_MAX_BYTES` and profile
+  photos and enqueues `BlobRecord`s; blobs are deduplicated by SHA-256 in table `blobs`.
+- `db/migrate.py: ensure_database_exists` creates the target database itself if missing
+  (connects to the `postgres` maintenance database with the same credentials; needs
+  `CREATEDB` only when the database doesn't already exist). Schema lives in
+  `db/migrations/*.sql` and is applied by the store on its first connection
+  (`db/migrate.py: apply_migrations`). Bump `db/__init__.py: SCHEMA_VERSION` when adding
+  a file. Both run automatically on every `MessageStore` connect — no manual SQL required
+  for a plain `DATABASE_URL` pointed at a role with `CREATEDB` (e.g. `postgres`).
+- Chat ids are Telethon marked ids. Deletions in basic groups arrive without a chat id and
+  are matched by message id across chats of type `group`.
+- If PostgreSQL is down the queue buffers (10 000 events, 256 MiB of blobs) and the bot
+  keeps running; the oldest events are dropped with a stderr log when the buffer fills.
+
+Design spec: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
 
 ### Speech pipeline (`speech/*.py`)
 
@@ -78,3 +98,6 @@ pip install -e ".[dev]"
 pytest -v
 ruff check src tests
 ```
+
+Integration tests (`tests/integration`, marker `integration`) run only when `TEST_DATABASE_URL`
+points at a disposable database whose name contains `test`; see README.

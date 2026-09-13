@@ -1,16 +1,18 @@
 """Handler registry. Each handler module registers itself by adding an import
 plus an entry in _MODULES. Populated incrementally as handler tasks land."""
 
+import re
+
 from kodzu_thon.handlers import (
     ai,
     air_alarm,
     animations,
     autoresponder,
     bg_voice,
-    deletion_log,
     memes,
     moderation,
     reactions,
+    recorder,
     scan,
     summarize,
     translate,
@@ -36,7 +38,7 @@ _MODULES = [
     voice_synth,
     memes,
     autoresponder,
-    deletion_log,
+    recorder,
     bg_voice,
 ]
 
@@ -45,4 +47,8 @@ def register_all(client, ctx) -> None:
     for module in _MODULES:
         if hasattr(module, "HELP"):
             ctx.help_lines.extend(module.HELP)
+        for pattern in getattr(module, "COMMAND_PATTERNS", []):
+            ctx.command_patterns.append(
+                pattern if isinstance(pattern, re.Pattern) else re.compile(pattern)
+            )
         module.register(client, ctx)

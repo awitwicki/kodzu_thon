@@ -8,6 +8,7 @@ HELP = [
     ("scans [optional reply]", "silently scan message or chat"),
     ("scraps (chat)", "silently scrap all members to .csv"),
 ]
+COMMAND_PATTERNS = ["^scan$", "^scans$", "^scraps$"]
 
 
 async def _scan_logic(event, client, ctx) -> None:

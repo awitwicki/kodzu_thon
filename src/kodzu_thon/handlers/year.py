@@ -5,6 +5,7 @@ from telethon import events
 from kodzu_thon.services.year_progress import get_year_progress
 
 HELP = [("year", "year info")]
+COMMAND_PATTERNS = ["^year$"]
 
 
 async def _year_logic(event, ctx) -> None:

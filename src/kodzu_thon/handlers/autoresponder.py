@@ -44,16 +44,6 @@ async def _autoresponder_logic(event, client, ctx) -> None:
             },
             fields={"income_messages": 1.0},
         )
-
-        if msg.text and isinstance(msg.sender, User) and not msg.sender.bot:
-            ctx.message_cache.add(
-                chat_id=chat_id,
-                message_id=msg.id,
-                sender_id=user_id,
-                sender_name=user_name,
-                chat_title=chat_title,
-                text=msg.text,
-            )
     except Exception as e:
         print(e, file=sys.stderr)
 

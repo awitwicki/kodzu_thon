@@ -1,6 +1,7 @@
 from telethon import events
 
 HELP = [("!h", "show this help")]
+COMMAND_PATTERNS = ["^!h$"]
 
 
 async def _help_logic(event, ctx) -> None:

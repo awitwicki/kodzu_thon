@@ -1,3 +1,4 @@
+import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,6 +14,7 @@ def fake_event():
     e.message.id = 1
     e.message.is_channel = False
     e.message.is_group = False
+    e.message.date = datetime.datetime.now(datetime.UTC)
     e.chat_id = 123
     e._message_id = 1
     e.is_private = False
@@ -54,6 +56,8 @@ def fake_settings():
     s.media_dir = "media"
     s.img_dir = "img"
     s.bio_update_interval_s = 300
+    s.database_url = "postgresql://kodzuthon:pw@postgres:5432/kodzu_messages"
+    s.record_media_max_bytes = 5 * 1024 * 1024
     return s
 
 
@@ -64,8 +68,11 @@ def fake_ctx(fake_settings):
     ctx.translator = AsyncMock()
     ctx.air_alarm = MagicMock()
     ctx.influx = MagicMock()
-    ctx.message_cache = MagicMock()
     ctx.two_hundred = MagicMock()
     ctx.settings = fake_settings
     ctx.help_lines = []
+    ctx.command_patterns = []
+    ctx.message_store = MagicMock()
+    ctx.message_store.enqueue = MagicMock()
+    ctx.media_fetcher = MagicMock()
     return ctx

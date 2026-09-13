@@ -44,6 +44,8 @@ Optional:
 - `INFLUX_HOST`: InfluxDB hostname (default: `monitoring_influxdb`)
 - `INFLUX_PORT`: InfluxDB port (default: `8086`)
 - `SESSION_PATH`: Path to Telethon session file (default: `session_data/session_name`)
+- `DATABASE_URL`: PostgreSQL connection string for the message archive, e.g. `postgresql://kodzuthon:password@postgres:5432/kodzu_messages`. Unset = recording disabled.
+- `RECORD_MEDIA_MAX_BYTES`: media at or below this size is stored in the database (default: `5242880`, 5 MiB)
 
 Set these in the system environment, or in a `.env` file for docker-compose.
 
@@ -87,6 +89,42 @@ To pre-populate the session without interactive login:
 
 Now you can run `docker-compose up -d` without interactive login.
 
+## Message archive
+
+With `DATABASE_URL` set, the bot records every message, edit and deletion it sees in groups,
+supergroups and channels (private chats are never recorded) into PostgreSQL, together with
+media up to `RECORD_MEDIA_MAX_BYTES` and user/chat profile photos.
+
+### Setup
+
+Just point `DATABASE_URL` at a PostgreSQL server (PostgreSQL 14+; the
+`timescale/timescaledb:latest-pg18` image works) and start the bot — nothing else to run
+by hand:
+
+```
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/kodzu_messages
+```
+
+Any role that can log in works, e.g. the server's `postgres` superuser. On first connect the
+bot:
+- creates the `kodzu_messages` database itself if it doesn't exist yet (needs `CREATEDB` on
+  the connecting role — skipped entirely if the database is already there),
+- creates and migrates its own schema (tables, indexes, the `pg_trgm` extension) automatically,
+  safe to run on every restart — already-applied migrations are skipped.
+
+No manual SQL, no roles to pre-create for this to work.
+
+### Optional: a scoped-down role instead of a superuser
+
+If you'd rather not hand the bot a superuser connection, `deploy/postgres-init.sql` (roles +
+database) and `deploy/postgres-init-db.sql` (extension + grants) set up a least-privilege
+`kodzuthon` role instead — run the first against the default database, the second against
+`kodzu_messages` (as two separate files, not one script with `\connect`, so they also work
+pasted into a GUI client like pgAdmin or DBeaver, not just `psql`). Then point `DATABASE_URL`
+at that role instead of a superuser.
+
+Design: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
+
 ## Tests
 
 ```bash
@@ -94,4 +132,13 @@ pip install -e ".[dev]"
 pytest
 ruff check src tests
 ruff format src tests
+```
+
+Integration tests need a disposable PostgreSQL database whose name contains `test`
+(the suite drops and recreates its `public` schema):
+
+```bash
+docker run --rm -d --name kodzu-test-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=kodzu_test -p 55432:5432 timescale/timescaledb:latest-pg18
+TEST_DATABASE_URL=postgresql://postgres:pw@localhost:55432/kodzu_test pytest tests/integration
+docker stop kodzu-test-pg
 ```

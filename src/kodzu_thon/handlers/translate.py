@@ -6,6 +6,8 @@ from kodzu_thon.services.gemini import GeminiError
 from kodzu_thon.utils.files import safe_remove
 
 HELP = [("tr [reply]", "translate message, OR transcrybe voice or video note")]
+_TR_PATTERN = re.compile(r"^tr$", re.IGNORECASE)
+COMMAND_PATTERNS = [_TR_PATTERN]
 
 
 async def _tr_logic(event, ctx) -> None:
@@ -33,6 +35,6 @@ async def _tr_logic(event, ctx) -> None:
 
 
 def register(client, ctx) -> None:
-    @client.on(events.NewMessage(pattern=re.compile(r"^tr$", re.IGNORECASE), outgoing=True))
+    @client.on(events.NewMessage(pattern=_TR_PATTERN, outgoing=True))
     async def _on_tr(event):
         await _tr_logic(event, ctx)

@@ -33,3 +33,36 @@ def test_from_env_raises_when_required_missing(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     with pytest.raises(ConfigError, match="TELETHON_API_ID"):
         Settings.from_env()
+
+
+def test_from_env_recorder_defaults(monkeypatch):
+    monkeypatch.setenv("TELETHON_API_ID", "1")
+    monkeypatch.setenv("TELETHON_API_HASH", "h")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RECORD_MEDIA_MAX_BYTES", raising=False)
+
+    s = Settings.from_env()
+    assert s.database_url is None
+    assert s.record_media_max_bytes == 5 * 1024 * 1024
+
+
+def test_from_env_recorder_overrides(monkeypatch):
+    monkeypatch.setenv("TELETHON_API_ID", "1")
+    monkeypatch.setenv("TELETHON_API_HASH", "h")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db:5432/kodzu_messages")
+    monkeypatch.setenv("RECORD_MEDIA_MAX_BYTES", "1024")
+
+    s = Settings.from_env()
+    assert s.database_url == "postgresql://u:p@db:5432/kodzu_messages"
+    assert s.record_media_max_bytes == 1024
+
+
+def test_from_env_empty_database_url_means_disabled(monkeypatch):
+    monkeypatch.setenv("TELETHON_API_ID", "1")
+    monkeypatch.setenv("TELETHON_API_HASH", "h")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("DATABASE_URL", "")
+
+    assert Settings.from_env().database_url is None

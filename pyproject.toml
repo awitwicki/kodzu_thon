@@ -5,6 +5,7 @@ description = "Telethon-based Telegram userbot"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "asyncpg==0.31.0",
     "basemap==1.4.1",
     "cachetools==5.5.0",
     "googletrans==4.0.2",
@@ -40,6 +41,9 @@ packages = ["src/kodzu_thon"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: needs TEST_DATABASE_URL pointing at a disposable PostgreSQL database whose name contains 'test'",
+]
 
 [tool.ruff]
 line-length = 100

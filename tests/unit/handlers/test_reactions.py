@@ -1,6 +1,19 @@
+import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from kodzu_thon.handlers.reactions import _reactions_logic
+
+
+async def test_stale_message_ignored(fake_event, fake_client, fake_ctx):
+    fake_event.message.date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=5)
+    fake_event.message.text = "!lk 👍 5"
+    fake_event.get_reply_message = AsyncMock(return_value=MagicMock(sender="u"))
+
+    await _reactions_logic(fake_event, fake_client, fake_ctx)
+
+    fake_event.get_reply_message.assert_not_awaited()
+    fake_event.delete.assert_not_awaited()
+    fake_event.edit.assert_not_awaited()
 
 
 async def test_invalid_emoji_returns_palette(fake_event, fake_client, fake_ctx):

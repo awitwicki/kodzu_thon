@@ -6,6 +6,7 @@ HELP = [
     ("хня [optional reply]", "bredor video"),
     ("ніх [optional reply]", "damn video"),
 ]
+COMMAND_PATTERNS = ["^хня$", "^ніх$"]
 
 
 async def _send_meme(event, client, media_path: str) -> None:

@@ -3,6 +3,7 @@ from telethon import events
 from kodzu_thon.services.gemini import GeminiError
 
 HELP = [("ai {prompt}", "ask Gemini AI")]
+COMMAND_PATTERNS = ["^ai "]
 
 
 async def _ai_logic(event, ctx) -> None:
