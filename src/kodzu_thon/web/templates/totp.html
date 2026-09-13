@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Second factor - kodzuthon{% endblock %}
+{% block content %}
+<section class="login">
+  <h1>Enter your code</h1>
+  <p class="muted">Six digits from your authenticator app.</p>
+  {% if error %}<p class="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/login/totp">
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+    <label>Code
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="16" autocomplete="one-time-code" required autofocus>
+    </label>
+    <button type="submit">Verify</button>
+  </form>
+</section>
+{% endblock %}

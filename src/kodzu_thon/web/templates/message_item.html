@@ -1,0 +1,49 @@
+{# Renders one album: consecutive messages sharing grouped_id (usually a single message). #}
+{% set m = album[0] %}
+<article class="msg{% if m.deleted_at %} deleted{% endif %}" id="m{{ m.id }}">
+  {% set avatar_blob = m.sender_photo_blob_id or m.sender_chat_photo_blob_id %}
+  <img class="avatar small" alt="" src="{% if avatar_blob %}/media/{{ avatar_blob }}{% else %}/static/avatar.svg{% endif %}">
+  <div class="body">
+    <div class="head">
+      {% if m.sender_user_id %}
+      <a class="name" href="/users/{{ m.sender_user_id }}">{{ display_name(m.sender_first_name, m.sender_last_name, m.sender_username) }}</a>
+      {% elif m.sender_chat_id %}
+      <a class="name" href="/chats/{{ m.sender_chat_id }}">{{ m.sender_chat_title or m.sender_chat_id }}</a>
+      {% else %}
+      <span class="name">unknown</span>
+      {% endif %}
+      {% if show_chat %}<span class="muted">in <a href="/chats/{{ m.chat_id }}">{{ m.chat_title or m.chat_id }}</a></span>{% endif %}
+      <a class="muted" href="/chats/{{ m.chat_id }}/messages/{{ m.id }}">{{ m.sent_at | localtime }}</a>
+      {% if m.is_outgoing %}<span class="badge">me</span>{% endif %}
+      {% if m.edit_count %}<a class="badge edited" href="/chats/{{ m.chat_id }}/messages/{{ m.id }}">edited ({{ m.edit_count }})</a>{% endif %}
+      {% if m.deleted_at %}<span class="badge deleted">deleted at {{ m.deleted_at | localtime }}</span>{% endif %}
+    </div>
+    {% if m.fwd_from_user_id or m.fwd_from_chat_id or m.fwd_from_name %}
+    <div class="fwd">forwarded from
+      {% if m.fwd_from_user_id %}<a href="/users/{{ m.fwd_from_user_id }}">{{ display_name(m.fwd_first_name, m.fwd_last_name, none, fallback="user " ~ m.fwd_from_user_id) }}</a>
+      {% elif m.fwd_from_chat_id %}<a href="/chats/{{ m.fwd_from_chat_id }}">{{ m.fwd_chat_title or ("chat " ~ m.fwd_from_chat_id) }}</a>
+      {% else %}{{ m.fwd_from_name }}{% endif %}
+      {% if m.fwd_date %}<span class="muted">({{ m.fwd_date | localtime }})</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if m.reply_to_msg_id %}
+    <div class="reply">
+      <a href="/chats/{{ m.chat_id }}/messages/{{ m.reply_to_msg_id }}">reply to
+        {%- if m.reply_first_name or m.reply_last_name %} {{ display_name(m.reply_first_name, m.reply_last_name, none) }}
+        {%- elif m.reply_chat_title %} {{ m.reply_chat_title }}
+        {%- else %} #{{ m.reply_to_msg_id }}{% endif %}</a>:
+      {{ (m.reply_text or "")[:120] }}
+    </div>
+    {% endif %}
+    {% if album | length > 1 %}
+    <div class="album">
+      {% for item in album %}{% include "media_item.html" %}{% endfor %}
+    </div>
+    {% else %}
+    {% set item = m %}{% include "media_item.html" %}
+    {% endif %}
+    {% for item in album %}
+    {% if item.text %}<div class="text">{{ item.text | fmt_text }}</div>{% endif %}
+    {% endfor %}
+  </div>
+</article>

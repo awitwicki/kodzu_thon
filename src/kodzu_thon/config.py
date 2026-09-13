@@ -18,7 +18,7 @@ class Settings:
     geojson_path: str = "media/ukraine-with-regions_1530.geojson"
     media_dir: str = "media"
     img_dir: str = "img"
-    version: str = "v1.19.1"
+    version: str = "v1.20.0"
     bio_update_interval_s: int = 300
     database_url: str | None = None
     record_media_max_bytes: int = 5 * 1024 * 1024

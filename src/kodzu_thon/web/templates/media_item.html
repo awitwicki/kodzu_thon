@@ -1,0 +1,14 @@
+{% set meta = item.media_meta or {} %}
+{% if item.media_type in ("photo", "sticker") and item.media_blob_id %}
+<div class="media"><a href="/media/{{ item.media_blob_id }}"><img src="/media/{{ item.media_blob_id }}" alt=""></a></div>
+{% elif item.media_type == "gif" and item.media_blob_id %}
+<div class="media"><video autoplay loop muted playsinline src="/media/{{ item.media_blob_id }}"></video></div>
+{% elif item.media_type in ("video", "video_note") and item.media_blob_id %}
+<div class="media"><video controls preload="metadata" src="/media/{{ item.media_blob_id }}"></video></div>
+{% elif item.media_type in ("voice", "audio") and item.media_blob_id %}
+<div class="media"><audio controls preload="none" src="/media/{{ item.media_blob_id }}"></audio></div>
+{% elif item.media_type == "document" and item.media_blob_id %}
+<div class="media"><a href="/media/{{ item.media_blob_id }}?filename={{ (meta.get('filename') or '') | urlencode }}">{{ meta.get('filename') or 'document' }}</a> <span class="muted">{{ item.media_size | human_size }}</span></div>
+{% elif item.media_type and item.media_type != "webpage" %}
+<div class="media"><span class="note">{{ item.media_type }}{% if meta.get('skipped') %}: {{ meta.get('skipped') }}{% endif %}{% if item.media_size %} ({{ item.media_size | human_size }}){% endif %}</span></div>
+{% endif %}

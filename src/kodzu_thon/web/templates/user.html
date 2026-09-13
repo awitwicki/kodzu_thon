@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}{{ display_name(user.first_name, user.last_name, user.username) }} - kodzuthon{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="msg">
+    <img class="avatar" alt="" src="{% if user.photo_blob_id %}/media/{{ user.photo_blob_id }}{% else %}/static/avatar.svg{% endif %}">
+    <div>
+      <h1>{{ display_name(user.first_name, user.last_name, user.username) }}
+        {% if user.is_bot %}<span class="badge">bot</span>{% endif %}
+        {% if user.is_self %}<span class="badge">me</span>{% endif %}</h1>
+      <p class="muted">{% if user.username %}@{{ user.username }} - {% endif %}id {{ user.id }} - first seen {{ user.first_seen_at | localtime }} - last seen {{ user.last_seen_at | localtime }}</p>
+    </div>
+  </div>
+  {% if history %}
+  <h2>Name history</h2>
+  <table>
+    <tr><th>Seen at</th><th>First name</th><th>Last name</th><th>Username</th></tr>
+    {% for h in history %}
+    <tr><td>{{ h.seen_at | localtime }}</td><td>{{ h.first_name or '' }}</td><td>{{ h.last_name or '' }}</td><td>{% if h.username %}@{{ h.username }}{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if chats %}
+  <h2>Chats</h2>
+  <ul>
+    {% for c in chats %}<li><a href="/chats/{{ c.id }}">{{ c.title or c.id }}</a> <span class="badge">{{ c.type }}</span> <span class="muted">{{ c.message_count }} messages</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+</section>
+<h2>Messages</h2>
+{% include "filters.html" %}
+{% set show_chat = true %}
+{% if not albums %}<p class="muted">No messages match.</p>{% endif %}
+{% for album in albums %}{% include "message_item.html" %}{% endfor %}
+{% if next_url %}<p class="pager"><a href="{{ next_url }}">Older messages</a></p>{% endif %}
+{% endblock %}

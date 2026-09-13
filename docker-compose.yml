@@ -12,6 +12,25 @@ services:
       - kodzuverse
     restart: unless-stopped
 
+  kodzuthon.web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: kodzuthon.web
+    container_name: kodzuthon.web-container
+    env_file:
+      - .env
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    networks:
+      - kodzuverse
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   kodzuverse:
     name: kodzuverse_network

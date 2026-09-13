@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}kodzuthon{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">kodzuthon</a>
+  {% if session and session.state == "authed" %}
+  <nav>
+    <a href="/">Chats</a>
+    <a href="/deleted">Deleted</a>
+  </nav>
+  <form class="search" method="get" action="/search">
+    <input type="search" name="q" maxlength="200" placeholder="Search all messages" value="{{ q or '' }}" required>
+    <button type="submit">Search</button>
+  </form>
+  <form class="logout" method="post" action="/logout">
+    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+    <button type="submit">Log out</button>
+  </form>
+  {% endif %}
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

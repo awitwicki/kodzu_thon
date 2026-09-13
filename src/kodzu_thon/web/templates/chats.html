@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}Chats - kodzuthon{% endblock %}
+{% block content %}
+<h1>Chats</h1>
+{% if not chats %}<p class="muted">Nothing recorded yet.</p>{% endif %}
+<ul class="chat-list">
+{% for c in chats %}
+  <li>
+    <img class="avatar" alt="" src="{% if c.photo_blob_id %}/media/{{ c.photo_blob_id }}{% else %}/static/avatar.svg{% endif %}">
+    <div>
+      <a href="/chats/{{ c.id }}">{{ c.title or c.id }}</a>
+      <span class="badge">{{ c.type }}</span>
+      {% if c.username %}<span class="muted">@{{ c.username }}</span>{% endif %}
+      <div class="muted">{% if c.last_message_at %}last message {{ c.last_message_at | localtime }}{% else %}no messages yet{% endif %}</div>
+    </div>
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block title %}{{ status_code }} - kodzuthon{% endblock %}
+{% block content %}
+<section class="error">
+  <h1>{{ status_code }}</h1>
+  <p>{{ message }}</p>
+  <p><a href="/">Back to chats</a></p>
+</section>
+{% endblock %}

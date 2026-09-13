@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block title %}Deleted messages - kodzuthon{% endblock %}
+{% block content %}
+<h1>Deleted messages</h1>
+{% include "filters.html" %}
+{% set show_chat = true %}
+{% if not albums %}<p class="muted">No deleted messages match.</p>{% endif %}
+{% for album in albums %}{% include "message_item.html" %}{% endfor %}
+{% if next_url %}<p class="pager"><a href="{{ next_url }}">Older</a></p>{% endif %}
+{% endblock %}

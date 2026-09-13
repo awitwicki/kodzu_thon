@@ -1,0 +1,12 @@
+<form class="filters" method="get" action="{{ path }}">
+  <label>Text<input type="search" name="q" maxlength="200" value="{{ filters.q or '' }}"></label>
+  <label>From user id<input type="number" name="from" min="1" value="{{ filters.sender_id or '' }}"></label>
+  {% if not compact %}
+  <label>Since<input type="date" name="since" value="{{ query.get('since', '') }}"></label>
+  <label>Until (exclusive)<input type="date" name="until" value="{{ query.get('until', '') }}"></label>
+  <label><input type="checkbox" name="deleted" value="1"{% if filters.deleted_only %} checked{% endif %}> deleted only</label>
+  <label><input type="checkbox" name="edited" value="1"{% if filters.edited_only %} checked{% endif %}> edited only</label>
+  {% endif %}
+  <button type="submit">Filter</button>
+  <a href="{{ path }}">reset</a>
+</form>

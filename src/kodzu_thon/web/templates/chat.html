@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block title %}{{ chat.title or chat.id }} - kodzuthon{% endblock %}
+{% block content %}
+<h1>{{ chat.title or chat.id }} <span class="badge">{{ chat.type }}</span></h1>
+<p class="muted">{% if chat.username %}@{{ chat.username }} - {% endif %}id {{ chat.id }}</p>
+{% include "filters.html" %}
+{% if not albums %}<p class="muted">No messages match.</p>{% endif %}
+{% for album in albums %}{% include "message_item.html" %}{% endfor %}
+{% if next_url %}<p class="pager"><a href="{{ next_url }}">Older messages</a></p>{% endif %}
+{% endblock %}

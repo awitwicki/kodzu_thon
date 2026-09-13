@@ -25,6 +25,8 @@ Normal run:
 docker-compose up -d
 ```
 
+`docker-compose up -d` starts both `kodzuthon` and `kodzuthon.web`; the web service needs `WEB_ADMIN_USER` and `WEB_ADMIN_PASSWORD_HASH` in `.env`.
+
 The compose file references an external network `kodzuverse_network`; create it once with `docker network create kodzuverse_network` if it doesn't exist.
 
 Local (non-Docker) iteration is possible with system deps (`ffmpeg`, `libgeos`). InfluxDB connection errors at import are non-fatal and don't prevent bot startup.
@@ -76,6 +78,29 @@ skipped via each handler module's `COMMAND_PATTERNS`). Flow:
 
 Design spec: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
 
+### Web viewer (`web/`)
+
+`kodzu_thon.web` is a separate FastAPI service (its own `Dockerfile.web`, compose service
+`kodzuthon.web`) that reads the archive. It imports only `kodzu_thon.db` (for
+`SCHEMA_VERSION`) — never handlers/services — so its image installs just the `web` extras.
+
+- `web/repository.py` holds every SQL statement (parameterized asyncpg, rows as dicts with
+  JSONB decoded); `tests/unit/web/fake_repo.py` mirrors its interface in memory for route tests.
+- `web/auth.py` (argon2id, sessions hashed with SHA-256 in `web_sessions`, TOTP with replay
+  protection in `web_totp_state`, rate limits from `web_login_attempts`) and `web/security.py`
+  (cookie, CSRF, `require_authed` dependency, security headers) implement the OWASP controls
+  from the design spec §6. Every route except `/login`, `/login/totp`, `/healthz` and `/static`
+  requires an authed session.
+- Templates are Jinja2 with autoescape; there is no JavaScript (`script-src 'none'`). Text is
+  rendered through `web/textfmt.py` (escape, `http(s)`-only linkify, `nl2br`).
+- The `edited (n)` badge in a chat timeline links to the message's permalink page
+  (`/chats/{id}/messages/{id}`), where the full edit history and raw JSON actually render —
+  it is not shown inline in the timeline, since the timeline query doesn't join
+  `message_edits` and inlining it there would mean an extra query per row.
+- The web service never migrates; `web/app.py: check_schema` refuses to start on an older
+  schema. Start the recorder first.
+- CLI: `python -m kodzu_thon.web [serve | hash-password | totp-secret]`.
+
 ### Speech pipeline (`speech/*.py`)
 
 Modules shell out to `ffmpeg` and `ffprobe` to synthesize, merge, and compose audio/video. Filenames are generated internally (timestamps, UUIDs). User-controlled text is escaped before interpolation. Output files go to `media/` and are deleted after sending.
@@ -94,7 +119,7 @@ Loads Ukrainian oblast polygons from `media/ukraine-with-regions_1530.geojson` a
 Test stack: pytest + pytest-asyncio + pytest-mock + freezegun. All I/O is mocked at library boundaries.
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,web]"
 pytest -v
 ruff check src tests
 ```

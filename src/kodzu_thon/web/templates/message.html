@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block title %}Message {{ message.id }} - kodzuthon{% endblock %}
+{% block content %}
+<p class="muted"><a href="/chats/{{ message.chat_id }}">{{ message.chat_title or message.chat_id }}</a> - message {{ message.id }}</p>
+{% include "message_item.html" %}
+{% if edits %}
+<details class="history" open>
+  <summary>Edit history ({{ edits | length }} previous version{{ '' if edits | length == 1 else 's' }})</summary>
+  {% for e in edits %}
+  <div class="version">
+    <div class="muted">until {{ e.edited_at | localtime }}</div>
+    {% if e.old_text %}<div class="text">{{ e.old_text | fmt_text }}</div>{% else %}<div class="muted">(no text)</div>{% endif %}
+    {% if e.old_media_blob_id %}<div class="media"><a href="/media/{{ e.old_media_blob_id }}">previous media</a></div>{% endif %}
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
+<details class="history">
+  <summary>Raw message JSON</summary>
+  <pre>{{ raw_json }}</pre>
+</details>
+{% endblock %}

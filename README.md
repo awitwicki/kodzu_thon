@@ -28,7 +28,7 @@ A userbot (runs as the user's own account, not a bot account) that listens for o
 3. Install the package:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,web]"
 ```
 
 4. Set environment variables (see below)
@@ -114,28 +114,80 @@ bot:
 
 No manual SQL, no roles to pre-create for this to work.
 
-### Optional: a scoped-down role instead of a superuser
+### Optional: a read-only role for the web viewer
 
-If you'd rather not hand the bot a superuser connection, `deploy/postgres-init.sql` (roles +
-database) and `deploy/postgres-init-db.sql` (extension + grants) set up a least-privilege
-`kodzuthon` role instead — run the first against the default database, the second against
-`kodzu_messages` (as two separate files, not one script with `\connect`, so they also work
-pasted into a GUI client like pgAdmin or DBeaver, not just `psql`). Then point `DATABASE_URL`
-at that role instead of a superuser.
+The web viewer (below) works with the same `DATABASE_URL`. If you want it to hold only a
+read-only connection, create a role and point `WEB_DATABASE_URL` at it — run this once,
+connected to `kodzu_messages`:
+
+```sql
+CREATE ROLE kodzuweb_ro LOGIN PASSWORD 'change-me';
+GRANT CONNECT ON DATABASE kodzu_messages TO kodzuweb_ro;
+GRANT USAGE ON SCHEMA public TO kodzuweb_ro;
+GRANT SELECT ON chats, users, user_name_history, messages, message_edits, blobs, schema_migrations TO kodzuweb_ro;
+GRANT SELECT, INSERT, UPDATE, DELETE ON web_sessions, web_login_attempts, web_totp_state TO kodzuweb_ro;
+GRANT USAGE, SELECT ON SEQUENCE web_login_attempts_id_seq TO kodzuweb_ro;
+```
 
 Design: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
+
+## Web viewer (`kodzuthon.web`)
+
+A separate container that lets one admin browse the archive: chats, timelines with deleted
+and edited markers and filters, message permalinks with edit history and raw JSON, user
+profiles with name history, a global deleted feed, search, and stored media. Server-rendered,
+no JavaScript, strict CSP; single admin with argon2id password, optional TOTP, server-side
+sessions, CSRF tokens and login rate limiting.
+
+### Setup
+
+1. Generate the password hash and paste the printed line into `.env` (keep the single
+   quotes — the hash contains `$`):
+
+   ```bash
+   docker-compose run --rm --no-deps kodzuthon.web python -m kodzu_thon.web hash-password
+   ```
+
+2. Add to `.env`:
+
+   ```
+   WEB_ADMIN_USER=admin
+   WEB_ADMIN_PASSWORD_HASH='$argon2id$...'   # from step 1
+   ```
+
+   `WEB_DATABASE_URL` is optional and defaults to `DATABASE_URL`.
+
+3. `docker-compose up -d --build`, then open `http://<host>:8080` (change the host port with
+   `WEB_PORT`). The web service checks that the recorder has already created the schema and
+   refuses to start otherwise — start `kodzuthon` first.
+
+Optional two-factor login: `docker-compose run --rm --no-deps kodzuthon.web python -m kodzu_thon.web totp-secret admin`
+prints `WEB_TOTP_SECRET=...` for `.env` and an `otpauth://` URI to scan with an authenticator app.
+
+Environment variables (all read by the web container only):
+
+- `WEB_DATABASE_URL`: connection string (default: `DATABASE_URL`)
+- `WEB_ADMIN_USER`, `WEB_ADMIN_PASSWORD_HASH`: required
+- `WEB_TOTP_SECRET`: base32 secret; empty disables the second factor
+- `WEB_COOKIE_SECURE`: `true` behind TLS (also enables HSTS); default `false` for plain LAN use
+- `WEB_TIMEZONE`: display timezone (default `Europe/Warsaw`)
+- `WEB_FORWARDED_ALLOW_IPS`: set to your reverse proxy's IP to trust `X-Forwarded-For` from it
+- `WEB_PORT`: host port published by docker-compose (default `8080`)
+
+Exposing it beyond the LAN: put a TLS-terminating reverse proxy in front, set
+`WEB_COOKIE_SECURE=true` and `WEB_FORWARDED_ALLOW_IPS=<proxy ip>`, and enable TOTP.
 
 ## Tests
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,web]"
 pytest
 ruff check src tests
 ruff format src tests
 ```
 
 Integration tests need a disposable PostgreSQL database whose name contains `test`
-(the suite drops and recreates its `public` schema):
+(the suite drops and recreates its `public` schema). The web repository has its own integration tests in `tests/integration/test_web_repository.py`, run by the same command.
 
 ```bash
 docker run --rm -d --name kodzu-test-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=kodzu_test -p 55432:5432 timescale/timescaledb:latest-pg18
