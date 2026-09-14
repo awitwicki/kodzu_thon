@@ -216,3 +216,14 @@ async def test_invalid_filters_are_422(authed_client, fake_repo):
     assert (await authed_client.get("/chats/-100?q=" + "x" * 201)).status_code == 422
     assert (await authed_client.get("/chats/-100?from=0")).status_code == 422
     assert (await authed_client.get("/chats/-100?deleted=2")).status_code == 422
+
+
+async def test_blank_filter_values_are_treated_as_absent(authed_client, fake_repo):
+    """The filter form submits every field it has, even ones the user left blank (e.g.
+    an unfilled "From user id" or a date picker with nothing chosen) - blank must mean
+    "not provided", not a validation error, or clearing one field 422s the whole page."""
+    seed(fake_repo)
+    r = await authed_client.get("/chats/-100?q=&from=&since=&until=")
+    assert r.status_code == 200
+    _, kwargs = fake_repo.calls[-1]
+    assert kwargs["filters"] == MessageFilters()

@@ -142,6 +142,24 @@ async def test_deleted_feed_keyset_and_filters(authed_client, fake_repo):
     assert (await authed_client.get("/deleted?chat=abc")).status_code == 422
 
 
+async def test_deleted_feed_blank_filter_values_are_treated_as_absent(authed_client, fake_repo):
+    """The filter form (chat select on "All chats", "From user id" left blank) submits
+    q=&from=&chat= rather than omitting them; that must behave like no filter at all."""
+    seed(fake_repo)
+    r = await authed_client.get("/deleted?q=&from=&chat=")
+    assert r.status_code == 200
+    kwargs = fake_repo.calls[-1][1]
+    assert kwargs["filters"] == MessageFilters()
+
+
+async def test_deleted_feed_blank_from_with_chat_selected(authed_client, fake_repo):
+    seed(fake_repo)
+    r = await authed_client.get("/deleted?q=&from=&chat=-1002190657950")
+    assert r.status_code == 200
+    kwargs = fake_repo.calls[-1][1]
+    assert kwargs["filters"] == MessageFilters(chat_id=-1002190657950)
+
+
 async def test_deleted_feed_filters_by_chat_id(authed_client, fake_repo):
     seed(fake_repo)
     r = await authed_client.get("/deleted?chat=-200")

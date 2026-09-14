@@ -19,25 +19,50 @@ def get_repo(request: Request) -> Repository:
 RepoDep = Annotated[Repository, Depends(get_repo)]
 
 
+def _parse_int(name: str, raw: str | None, *, ge: int | None = None) -> int | None:
+    """Query(...) alone 422s a blank value (e.g. `from=`) instead of treating it as
+    absent, but the filter form always submits every field, blank ones included."""
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{name} must be an integer") from None
+    if ge is not None and value < ge:
+        raise HTTPException(status_code=422, detail=f"{name} must be >= {ge}") from None
+    return value
+
+
+def _parse_date(name: str, raw: str | None) -> date | None:
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{name} must be a date") from None
+
+
 def parse_filters(
     request: Request,
     q: Annotated[str | None, Query(max_length=200)] = None,
-    chat: Annotated[int | None, Query()] = None,
-    sender: Annotated[int | None, Query(alias="from", ge=1)] = None,
+    chat: Annotated[str | None, Query()] = None,
+    sender: Annotated[str | None, Query(alias="from")] = None,
     deleted: Annotated[int, Query(ge=0, le=1)] = 0,
     edited: Annotated[int, Query(ge=0, le=1)] = 0,
-    since: Annotated[date | None, Query()] = None,
-    until: Annotated[date | None, Query()] = None,
+    since: Annotated[str | None, Query()] = None,
+    until: Annotated[str | None, Query()] = None,
 ) -> MessageFilters:
     tz = ZoneInfo(request.app.state.settings.timezone)
+    since_date = _parse_date("since", since)
+    until_date = _parse_date("until", until)
     return MessageFilters(
         q=(q or "").replace("\x00", "").strip() or None,
-        chat_id=chat,
-        sender_id=sender,
+        chat_id=_parse_int("chat", chat),
+        sender_id=_parse_int("from", sender, ge=1),
         deleted_only=bool(deleted),
         edited_only=bool(edited),
-        since=datetime.combine(since, time.min, tz) if since else None,
-        until=datetime.combine(until, time.min, tz) if until else None,
+        since=datetime.combine(since_date, time.min, tz) if since_date else None,
+        until=datetime.combine(until_date, time.min, tz) if until_date else None,
     )
 
 
