@@ -82,6 +82,7 @@ async def test_timeline_renders_messages(authed_client, fake_repo):
     assert 'class="badge">me</span>' in body
     assert "reply to Ann" in body and ("hello " * 40)[:120] in body and ("hello " * 40) not in body
     assert "forwarded from" in body and 'href="/users/9">Bob</a>' in body
+    assert 'name="chat"' not in body  # already scoped to this chat by the URL
 
 
 async def test_timeline_media_rendering(authed_client, fake_repo):

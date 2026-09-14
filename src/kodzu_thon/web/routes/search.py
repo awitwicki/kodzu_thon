@@ -28,6 +28,7 @@ async def search(
 ):
     if not filters.q:
         raise HTTPException(status_code=422, detail="q is required")
+    chat_options = await repo.list_chats()
     rows = await repo.search_messages(before=keyset, limit=limit, filters=filters)
     page, last = paginate(rows, limit)
     next_url = (
@@ -43,4 +44,5 @@ async def search(
         next_url=next_url,
         filters=filters,
         q=filters.q,
+        chat_options=chat_options,
     )

@@ -72,8 +72,20 @@ async def test_user_profile(authed_client, fake_repo):
     # messages newest first, each labelled with its chat
     assert body.index('id="m5"') < body.index('id="m2"') < body.index('id="m1"')
     assert 'in <a href="/chats/-200">Other</a>' in body
+    assert '<option value="-100">Grp</option>' in body and '<option value="-200">Other</option>' in body
     name, kwargs = fake_repo.calls[-1]
     assert name == "user_messages" and kwargs["user_id"] == 7 and kwargs["before"] is None
+
+
+async def test_user_profile_filters_by_chat_id(authed_client, fake_repo):
+    seed(fake_repo)
+    r = await authed_client.get("/users/7?chat=-200")
+    assert r.status_code == 200
+    body = r.text
+    assert body.count("<article") == 1 and 'id="m5"' in body
+    assert '<option value="-200" selected>Other</option>' in body
+    kwargs = fake_repo.calls[-1][1]
+    assert kwargs["filters"] == MessageFilters(chat_id=-200)
 
 
 async def test_user_messages_keyset_links(authed_client, fake_repo):
@@ -101,7 +113,8 @@ async def test_deleted_feed(authed_client, fake_repo):
     assert (
         'in <a href="/chats/-100">Grp</a>' in body and 'in <a href="/chats/-200">Other</a>' in body
     )
-    assert 'name="since"' not in body  # compact filters: only q and from
+    assert 'name="since"' not in body  # compact hides since/until/checkboxes
+    assert '<option value="-100">Grp</option>' in body and '<option value="-200">Other</option>' in body
     assert fake_repo.calls[-1] == (
         "deleted_messages",
         {"before": None, "limit": 100, "filters": MessageFilters()},
@@ -126,6 +139,18 @@ async def test_deleted_feed_keyset_and_filters(authed_client, fake_repo):
     assert (
         await authed_client.get("/deleted?before_ts=2026-09-13T12:00:00&before_id=5")
     ).status_code == 422
+    assert (await authed_client.get("/deleted?chat=abc")).status_code == 422
+
+
+async def test_deleted_feed_filters_by_chat_id(authed_client, fake_repo):
+    seed(fake_repo)
+    r = await authed_client.get("/deleted?chat=-200")
+    assert r.status_code == 200
+    body = r.text
+    assert body.count("<article") == 1 and 'id="m5"' in body
+    assert '<option value="-200" selected>Other</option>' in body
+    kwargs = fake_repo.calls[-1][1]
+    assert kwargs["filters"] == MessageFilters(chat_id=-200)
 
 
 async def test_search(authed_client, fake_repo):
@@ -142,13 +167,26 @@ async def test_search(authed_client, fake_repo):
         q="ir", deleted_only=True, since=datetime(2026, 9, 1, tzinfo=WARSAW)
     )
     assert kwargs["before"] is None and kwargs["limit"] == 100
+    assert '<option value="-100">Grp</option>' in body and '<option value="-200">Other</option>' in body
+
+
+async def test_search_filters_by_chat_id(authed_client, fake_repo):
+    seed(fake_repo)
+    r = await authed_client.get("/search?q=ir&chat=-100")
+    assert r.status_code == 200
+    body = r.text
+    assert body.count("<article") == 1 and 'id="m1"' in body
+    assert '<option value="-100" selected>Grp</option>' in body
+    kwargs = fake_repo.calls[-1][1]
+    assert kwargs["filters"] == MessageFilters(q="ir", chat_id=-100)
 
 
 async def test_search_pagination(authed_client, fake_repo):
     seed(fake_repo)
     for i in range(10, 112):
         fake_repo.add_message(chat_id=-100, id=i, text="needle", sent_at=NOW + timedelta(seconds=i))
-    r = await authed_client.get("/search?q=needle")
+    r = await authed_client.get("/search?q=needle&chat=-100")
     assert (
         r.text.count("<article") == 100 and "before_id=12" in r.text and "q=needle&amp;" in r.text
     )
+    assert "chat=-100" in r.text

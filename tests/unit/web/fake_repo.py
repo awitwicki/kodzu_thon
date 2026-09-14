@@ -147,6 +147,8 @@ class FakeRepository:
 
     @staticmethod
     def _apply_filters(rows: list[dict], f: MessageFilters) -> list[dict]:
+        if f.chat_id is not None:
+            rows = [r for r in rows if r["chat_id"] == f.chat_id]
         if f.deleted_only:
             rows = [r for r in rows if r["deleted_at"] is not None]
         if f.edited_only:

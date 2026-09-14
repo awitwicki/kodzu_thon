@@ -22,6 +22,7 @@ RepoDep = Annotated[Repository, Depends(get_repo)]
 def parse_filters(
     request: Request,
     q: Annotated[str | None, Query(max_length=200)] = None,
+    chat: Annotated[int | None, Query()] = None,
     sender: Annotated[int | None, Query(alias="from", ge=1)] = None,
     deleted: Annotated[int, Query(ge=0, le=1)] = 0,
     edited: Annotated[int, Query(ge=0, le=1)] = 0,
@@ -31,6 +32,7 @@ def parse_filters(
     tz = ZoneInfo(request.app.state.settings.timezone)
     return MessageFilters(
         q=(q or "").replace("\x00", "").strip() or None,
+        chat_id=chat,
         sender_id=sender,
         deleted_only=bool(deleted),
         edited_only=bool(edited),

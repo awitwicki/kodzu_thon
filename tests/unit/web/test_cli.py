@@ -25,7 +25,7 @@ def test_hash_password_prints_quoted_env_line(capsys):
 def test_hash_password_rejects_short_passwords(capsys):
     assert cli.hash_password_command(read_password=lambda prompt: "short") == 1
     out, err = capsys.readouterr()
-    assert out == "" and "at least 12" in err
+    assert out == "" and "at least 11" in err
 
 
 def test_totp_secret_prints_secret_and_uri(capsys):

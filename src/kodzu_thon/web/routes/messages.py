@@ -55,6 +55,7 @@ async def deleted_feed(
     limit: LimitDep,
     keyset: KeysetDep,
 ):
+    chat_options = await repo.list_chats()
     rows = await repo.deleted_messages(before=keyset, limit=limit, filters=filters)
     page, last = paginate(rows, limit)
     next_url = (
@@ -70,4 +71,5 @@ async def deleted_feed(
         next_url=next_url,
         filters=filters,
         compact=True,
+        chat_options=chat_options,
     )

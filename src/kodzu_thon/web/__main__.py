@@ -11,7 +11,7 @@ from kodzu_thon.web.auth import hash_password, totp_provisioning_uri
 from kodzu_thon.web.config import WebConfigError, WebSettings
 
 USAGE = "usage: python -m kodzu_thon.web [serve | hash-password | totp-secret [username]]"
-MIN_PASSWORD_LENGTH = 12
+MIN_PASSWORD_LENGTH = 11
 
 
 def serve() -> int:

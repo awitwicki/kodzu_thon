@@ -36,7 +36,9 @@ def _add_me_route(app):
         return {"state": session["state"] if session else None}
 
 
-async def test_csrf_requires_session_and_matching_token(app, client, fake_repo):
+async def test_csrf_requires_session_and_matching_token(app, client, fake_repo, mocker):
+    set_now(mocker, NOW)
+
     @app.post("/act")
     async def act(session: CsrfDep):
         return {"state": session["state"]}
@@ -50,9 +52,10 @@ async def test_csrf_requires_session_and_matching_token(app, client, fake_repo):
     assert ok.status_code == 200 and ok.json() == {"state": "authed"}
 
 
-async def test_csrf_non_ascii_token_is_403_not_500(app, client, fake_repo):
+async def test_csrf_non_ascii_token_is_403_not_500(app, client, fake_repo, mocker):
     """secrets.compare_digest raises TypeError on non-ASCII str-vs-str input; verify_csrf
     must encode both sides to bytes first so this is a clean 403, not an unhandled 500."""
+    set_now(mocker, NOW)
 
     @app.post("/act")
     async def act(session: CsrfDep):

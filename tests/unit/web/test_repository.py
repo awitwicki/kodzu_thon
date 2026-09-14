@@ -25,16 +25,31 @@ async def test_chat_messages_default_query_fetches_limit_plus_one():
 async def test_chat_messages_applies_keyset_and_every_filter():
     conn = FakeConn(fetch_results=[[]])
     filters = MessageFilters(
-        q="50%", sender_id=7, deleted_only=True, edited_only=True, since=NOW, until=NOW
+        q="50%",
+        chat_id=-200,
+        sender_id=7,
+        deleted_only=True,
+        edited_only=True,
+        since=NOW,
+        until=NOW,
     )
     await make_repo(conn).chat_messages(-100, before_id=500, limit=10, filters=filters)
     sql, args = conn.calls[-1]
     assert "m.id < $2" in sql
+    assert "m.chat_id = $3" in sql
     assert "m.deleted_at IS NOT NULL" in sql and "m.edit_count > 0" in sql
-    assert "m.sender_user_id = $3" in sql
-    assert "m.text ILIKE '%' || $4 || '%' ESCAPE '\\'" in sql
-    assert "m.sent_at >= $5" in sql and "m.sent_at < $6" in sql
-    assert args == (-100, 500, 7, "50\\%", NOW, NOW, 11)
+    assert "m.sender_user_id = $4" in sql
+    assert "m.text ILIKE '%' || $5 || '%' ESCAPE '\\'" in sql
+    assert "m.sent_at >= $6" in sql and "m.sent_at < $7" in sql
+    assert args == (-100, 500, -200, 7, "50\\%", NOW, NOW, 11)
+
+
+async def test_deleted_messages_filters_by_chat_id():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).deleted_messages(filters=MessageFilters(chat_id=-200))
+    sql, args = conn.calls[-1]
+    assert "m.chat_id = $1" in sql
+    assert args == (-200, 101)
 
 
 async def test_message_rows_parse_jsonb_columns():

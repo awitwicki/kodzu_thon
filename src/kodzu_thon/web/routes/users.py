@@ -34,6 +34,7 @@ async def user_profile(
         raise HTTPException(status_code=404)
     history = await repo.user_name_history(user_id)
     chats = await repo.user_chats(user_id)
+    chat_options = await repo.list_chats()
     rows = await repo.user_messages(user_id, before=keyset, limit=limit, filters=filters)
     page, last = paginate(rows, limit)
     next_url = (
@@ -52,4 +53,5 @@ async def user_profile(
         next_url=next_url,
         filters=filters,
         q=filters.q,
+        chat_options=chat_options,
     )

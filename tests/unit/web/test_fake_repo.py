@@ -79,6 +79,18 @@ async def test_filters_apply_in_fake():
     ] == [3, 2, 1]
 
 
+async def test_chat_id_filter_narrows_to_one_chat():
+    repo = seeded()
+    repo.add_chat(id=-200, title="Other", type="group")
+    repo.add_message(
+        chat_id=-200, id=6, sender_user_id=7, text="msg 6", sent_at=NOW + timedelta(minutes=6)
+    )
+    found = await repo.search_messages(filters=MessageFilters(q="msg", chat_id=-100))
+    assert [r["id"] for r in found] == [5, 4, 3, 2, 1]
+    found = await repo.search_messages(filters=MessageFilters(q="msg", chat_id=-200))
+    assert [r["id"] for r in found] == [6]
+
+
 async def test_deleted_and_search_feeds():
     repo = seeded()
     deleted = await repo.deleted_messages()

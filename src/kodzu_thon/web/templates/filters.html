@@ -1,6 +1,14 @@
 <form class="filters" method="get" action="{{ path }}">
   <label>Text<input type="search" name="q" maxlength="200" value="{{ filters.q or '' }}"></label>
   <label>From user id<input type="number" name="from" min="1" value="{{ filters.sender_id or '' }}"></label>
+  {% if chat_options is defined %}
+  <label>Chat<select name="chat">
+    <option value="">All chats</option>
+    {% for c in chat_options %}
+    <option value="{{ c.id }}"{% if filters.chat_id == c.id %} selected{% endif %}>{{ c.title or c.id }}</option>
+    {% endfor %}
+  </select></label>
+  {% endif %}
   {% if not compact %}
   <label>Since<input type="date" name="since" value="{{ query.get('since', '') }}"></label>
   <label>Until (exclusive)<input type="date" name="until" value="{{ query.get('until', '') }}"></label>

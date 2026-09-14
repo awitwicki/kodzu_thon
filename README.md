@@ -141,25 +141,53 @@ sessions, CSRF tokens and login rate limiting.
 
 ### Setup
 
-1. Generate the password hash and paste the printed line into `.env` (keep the single
-   quotes — the hash contains `$`):
+1. Generate the password hash:
 
    ```bash
    docker-compose run --rm --no-deps kodzuthon.web python -m kodzu_thon.web hash-password
    ```
 
-2. Add to `.env`:
+2. Add to `.env`, **doubling every `$` to `$$`** (e.g. `$argon2id$v=19$...` becomes
+   `$$argon2id$$v=19$$...`):
 
    ```
    WEB_ADMIN_USER=admin
-   WEB_ADMIN_PASSWORD_HASH='$argon2id$...'   # from step 1
+   WEB_ADMIN_PASSWORD_HASH=$$argon2id$$v=19$$...   # from step 1, every $ doubled
    ```
+
+   This is required because Docker Compose interpolates `$VAR`/`${VAR}` references in
+   `.env` values (the same mechanism behind `${WEB_PORT:-8080}` in `docker-compose.yml`)
+   — an unescaped `$argon2id` is read as a reference to an unset variable named `argon2id`
+   and silently replaced with an empty string, corrupting the hash. This applies regardless
+   of how the line gets into `.env` (manual edit, `echo`, a CI script) — `$$` is Compose's
+   own escape sequence for a literal `$`, documented at
+   https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/.
+   Verify with: `docker-compose run --rm --no-deps kodzuthon.web python -c "import os; print(repr(os.environ.get('WEB_ADMIN_PASSWORD_HASH')))"`
+   — it should print the hash with a single `$` in each place, not the doubled form and
+   not a truncated one.
 
    `WEB_DATABASE_URL` is optional and defaults to `DATABASE_URL`.
 
 3. `docker-compose up -d --build`, then open `http://<host>:8080` (change the host port with
    `WEB_PORT`). The web service checks that the recorder has already created the schema and
    refuses to start otherwise — start `kodzuthon` first.
+
+**Troubleshooting: `Configuration error: WEB_ADMIN_PASSWORD_HASH must be an argon2 hash`**
+at container startup, even though `.env` looks correct — almost always means the `$` in the
+hash got eaten before the container ever saw it. Two independent places this happens, check
+both:
+- **Docker Compose itself** (see step 2 above) — the value in `.env` needs `$$`, not `$`.
+  This is the usual cause and bites regardless of how the line got into `.env`.
+- **A shell in the path that wrote `.env`** — `echo "KEY=$value" >> .env` (double quotes) in
+  a manual terminal command, a CI "run script" build step, or any tool that shells out to
+  write the file, expands `$argon2id`/`$v`/`$m`/etc. as (unset, so blank) shell variables
+  *before* the text even reaches Compose. Fix: single-quote the whole value in the writing
+  command (`echo 'KEY=$$...' >> .env`), or write the line with a text editor instead of a
+  shell command.
+
+Either way, the diagnostic in step 2 (`python -c "import os; print(repr(...))"`, run inside
+the actual container) tells you definitively what value the app receives — trust that over
+staring at `.env`, since two different layers can each independently mangle the same `$`.
 
 Optional two-factor login: `docker-compose run --rm --no-deps kodzuthon.web python -m kodzu_thon.web totp-secret admin`
 prints `WEB_TOTP_SECRET=...` for `.env` and an `otpauth://` URI to scan with an authenticator app.

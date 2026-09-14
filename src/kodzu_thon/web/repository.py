@@ -16,6 +16,7 @@ MAX_PAGE_SIZE = 200
 @dataclass(frozen=True)
 class MessageFilters:
     q: str | None = None
+    chat_id: int | None = None
     sender_id: int | None = None
     deleted_only: bool = False
     edited_only: bool = False
@@ -122,6 +123,9 @@ def _message_row(record: Any) -> dict:
 
 def _filter_clauses(filters: MessageFilters, params: list[Any]) -> list[str]:
     clauses: list[str] = []
+    if filters.chat_id is not None:
+        params.append(filters.chat_id)
+        clauses.append(f"m.chat_id = ${len(params)}")
     if filters.deleted_only:
         clauses.append("m.deleted_at IS NOT NULL")
     if filters.edited_only:
