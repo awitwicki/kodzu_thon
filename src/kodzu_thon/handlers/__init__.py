@@ -8,7 +8,6 @@ from kodzu_thon.handlers import (
     air_alarm,
     animations,
     autoresponder,
-    bg_voice,
     memes,
     moderation,
     reactions,
@@ -22,7 +21,6 @@ from kodzu_thon.handlers import (
 from kodzu_thon.handlers import help as help_module
 from kodzu_thon.handlers import typing as typing_module
 
-# Order matters: bg_voice has no pattern and matches all outgoing — register last.
 _MODULES = [
     help_module,
     ai,
@@ -39,7 +37,6 @@ _MODULES = [
     memes,
     autoresponder,
     recorder,
-    bg_voice,
 ]
 
 
