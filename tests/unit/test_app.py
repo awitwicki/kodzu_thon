@@ -53,7 +53,6 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
     fake_ctx.message_store.stop = AsyncMock()
     fake_ctx.media_fetcher.stop = AsyncMock()
     mocker.patch("kodzu_thon.app.build_app", return_value=(client, fake_ctx))
-    mocker.patch("kodzu_thon.app._bio_loop", AsyncMock())
 
     await run_app()
 
@@ -65,16 +64,14 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
 
 
 async def test_shutdown_isolates_exception_in_first_stage(capsys):
-    bio_task = MagicMock()
     ctx = MagicMock()
     ctx.media_fetcher.stop = AsyncMock(side_effect=RuntimeError("fetcher boom"))
     ctx.message_store.stop = AsyncMock()
     client = MagicMock()
     client.disconnect = AsyncMock()
 
-    await _shutdown(bio_task, ctx, client)
+    await _shutdown(ctx, client)
 
-    bio_task.cancel.assert_called_once()
     ctx.media_fetcher.stop.assert_awaited_once()
     ctx.message_store.stop.assert_awaited_once()
     client.disconnect.assert_awaited_once()
@@ -82,14 +79,13 @@ async def test_shutdown_isolates_exception_in_first_stage(capsys):
 
 
 async def test_shutdown_continues_after_multiple_failures(capsys):
-    bio_task = MagicMock()
     ctx = MagicMock()
     ctx.media_fetcher.stop = AsyncMock(side_effect=RuntimeError("fetcher boom"))
     ctx.message_store.stop = AsyncMock(side_effect=RuntimeError("store boom"))
     client = MagicMock()
     client.disconnect = AsyncMock()
 
-    await _shutdown(bio_task, ctx, client)
+    await _shutdown(ctx, client)
 
     # Every stage still ran despite the first two raising.
     ctx.media_fetcher.stop.assert_awaited_once()

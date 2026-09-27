@@ -6,7 +6,6 @@ import sys
 from dataclasses import dataclass, field
 
 from telethon import TelegramClient
-from telethon.tl.functions.account import UpdateProfileRequest
 
 from kodzu_thon import handlers
 from kodzu_thon.config import Settings
@@ -17,7 +16,6 @@ from kodzu_thon.services.message_store import MessageStore
 from kodzu_thon.services.observability import InfluxWriter
 from kodzu_thon.services.translator import Translator
 from kodzu_thon.services.two_hundred import TwoHundredService
-from kodzu_thon.services.year_progress import get_year_progress
 
 
 @dataclass
@@ -54,15 +52,23 @@ def build_app() -> tuple[TelegramClient, AppContext]:
     return client, ctx
 
 
-async def _bio_loop(client: TelegramClient, ctx: AppContext) -> None:
-    while True:
-        about = get_year_progress()
-        last_name = f"{ctx.two_hundred.count():.2f}"
-        try:
-            await client(UpdateProfileRequest(about=about, last_name=last_name))
-        except Exception as e:
-            print(f"bio update failed: {e}")
-        await asyncio.sleep(ctx.settings.bio_update_interval_s)
+# Bio/last-name auto-update disabled. To restore, uncomment this block (moving the
+# two imports to the top of the file) and the lines marked `bio_task` below.
+# from telethon.tl.functions.account import UpdateProfileRequest
+# from kodzu_thon.services.year_progress import get_year_progress
+#
+#
+# async def _bio_loop(client: TelegramClient, ctx: AppContext) -> None:
+#     while True:
+#         about = get_year_progress()
+#         # Last-name auto-update disabled; uncomment to restore.
+#         # last_name = f"{ctx.two_hundred.count():.2f}"
+#         try:
+#             # await client(UpdateProfileRequest(about=about, last_name=last_name))
+#             await client(UpdateProfileRequest(about=about))
+#         except Exception as e:
+#             print(f"bio update failed: {e}")
+#         await asyncio.sleep(ctx.settings.bio_update_interval_s)
 
 
 def _install_stop_signal_handlers(stop_event: asyncio.Event) -> list[signal.Signals]:
@@ -90,11 +96,11 @@ def _remove_stop_signal_handlers(signals: list[signal.Signals]) -> None:
             loop.remove_signal_handler(sig)
 
 
-async def _shutdown(bio_task: asyncio.Task, ctx: AppContext, client: TelegramClient) -> None:
+async def _shutdown(ctx: AppContext, client: TelegramClient) -> None:
     """Run the three shutdown stages, isolating exceptions so a failure in one
     (e.g. the media fetcher) does not prevent the others (e.g. flushing the
     message store's queue) from running."""
-    bio_task.cancel()
+    # bio_task.cancel()
     for stop in (ctx.media_fetcher.stop, ctx.message_store.stop, client.disconnect):
         try:
             await stop()
@@ -106,7 +112,7 @@ async def run_app() -> None:
     client, ctx = build_app()
     await client.start()
     await ctx.message_store.start()
-    bio_task = asyncio.create_task(_bio_loop(client, ctx))
+    # bio_task = asyncio.create_task(_bio_loop(client, ctx))
 
     stop_event = asyncio.Event()
     installed_signals = _install_stop_signal_handlers(stop_event)
@@ -123,4 +129,4 @@ async def run_app() -> None:
                         await task
     finally:
         _remove_stop_signal_handlers(installed_signals)
-        await _shutdown(bio_task, ctx, client)
+        await _shutdown(ctx, client)
