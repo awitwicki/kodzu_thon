@@ -227,3 +227,18 @@ async def test_blank_filter_values_are_treated_as_absent(authed_client, fake_rep
     assert r.status_code == 200
     _, kwargs = fake_repo.calls[-1]
     assert kwargs["filters"] == MessageFilters()
+
+
+async def test_timeline_hide_bots(authed_client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_user(id=9, first_name="Robo", last_name=None, username="robo_bot", is_bot=True)
+    fake_repo.add_message(chat_id=-100, id=1, text="human")
+    fake_repo.add_message(chat_id=-100, id=2, sender_user_id=9, text="beep")
+    body = (await authed_client.get("/chats/-100")).text
+    assert 'id="m1"' in body and 'id="m2"' in body
+    assert '<input type="checkbox" name="nobots" value="1"> hide messages from bots' in body
+    assert 'name="kind"' not in body
+    r = await authed_client.get("/chats/-100?nobots=1")
+    assert 'id="m1"' in r.text and 'id="m2"' not in r.text
+    assert 'name="nobots" value="1" checked' in r.text
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(hide_bots=True)

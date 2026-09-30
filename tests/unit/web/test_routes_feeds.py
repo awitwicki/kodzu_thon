@@ -208,3 +208,71 @@ async def test_search_pagination(authed_client, fake_repo):
         r.text.count("<article") == 100 and "before_id=12" in r.text and "q=needle&amp;" in r.text
     )
     assert "chat=-100" in r.text
+
+
+def seed_kinds_and_bots(fake_repo):
+    seed(fake_repo)
+    fake_repo.add_chat(id=-300, title="Chan", type="channel")
+    fake_repo.add_user(id=9, first_name="Robo", last_name=None, username="robo_bot", is_bot=True)
+    fake_repo.add_message(chat_id=-300, id=6, text="chan post", deleted_at=NOW)
+    fake_repo.add_message(chat_id=-100, id=7, sender_user_id=9, text="beep", deleted_at=NOW)
+    return fake_repo
+
+
+async def test_deleted_feed_kind_checkboxes_default_to_both(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    r = await authed_client.get("/deleted")
+    body = r.text
+    assert body.count("<article") == 4
+    assert '<input type="checkbox" name="kind" value="groups" checked> chats' in body
+    assert '<input type="checkbox" name="kind" value="channels" checked> channels' in body
+    assert '<input type="checkbox" name="nobots" value="1"> hide messages from bots' in body
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters()
+
+
+async def test_deleted_feed_only_chats(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    r = await authed_client.get("/deleted?kind=groups")
+    body = r.text
+    assert 'id="m6"' not in body and 'id="m5"' in body and 'id="m2"' in body
+    assert 'value="groups" checked' in body and 'value="channels">' in body
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(chat_kind="groups")
+
+
+async def test_deleted_feed_only_channels(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    r = await authed_client.get("/deleted?kind=channels")
+    assert r.text.count("<article") == 1 and 'id="m6"' in r.text
+    assert 'value="groups">' in r.text and 'value="channels" checked' in r.text
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(chat_kind="channels")
+
+
+async def test_deleted_feed_both_kinds_is_no_filter(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    r = await authed_client.get("/deleted?kind=groups&kind=channels")
+    assert r.text.count("<article") == 4
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters()
+    assert (await authed_client.get("/deleted?kind=users")).status_code == 422
+
+
+async def test_deleted_feed_hide_bots(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    r = await authed_client.get("/deleted?nobots=1&kind=groups")
+    body = r.text
+    assert 'id="m7"' not in body and 'id="m6"' not in body and 'id="m5"' in body
+    assert 'name="nobots" value="1" checked' in body
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(chat_kind="groups", hide_bots=True)
+
+
+async def test_deleted_feed_pagination_keeps_kind_and_nobots(authed_client, fake_repo):
+    seed_kinds_and_bots(fake_repo)
+    for i in range(10, 112):
+        fake_repo.add_message(chat_id=-100, id=i, text="gone", deleted_at=NOW + timedelta(seconds=i))
+    r = await authed_client.get("/deleted?kind=groups&nobots=1")
+    assert "kind=groups&amp;nobots=1&amp;before_ts=" in r.text
+
+
+async def test_search_has_no_kind_or_bot_checkboxes(authed_client, fake_repo):
+    seed(fake_repo)
+    body = (await authed_client.get("/search?q=ir")).text
+    assert 'name="kind"' not in body and 'name="nobots"' not in body

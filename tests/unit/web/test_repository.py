@@ -212,3 +212,17 @@ async def test_close_closes_pool():
     pool = FakePool(conn)
     await Repository(pool).close()
     assert pool.closed is True
+
+
+async def test_chat_kind_and_hide_bots_filters():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).deleted_messages(
+        filters=MessageFilters(chat_kind="groups", hide_bots=True)
+    )
+    sql, args = conn.calls[-1]
+    assert "c.type = ANY($1::text[])" in sql and "u.is_bot IS NOT TRUE" in sql
+    assert args == (["group", "supergroup"], 101)
+
+
+async def test_message_select_exposes_sender_is_bot():
+    assert "u.is_bot AS sender_is_bot" in repo_mod.MESSAGE_SELECT

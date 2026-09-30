@@ -49,4 +49,5 @@ async def chat_timeline(
         next_url=next_url,
         filters=filters,
         q=filters.q,
+        show_hide_bots=True,
     )

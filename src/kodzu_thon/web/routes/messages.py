@@ -72,4 +72,6 @@ async def deleted_feed(
         filters=filters,
         compact=True,
         chat_options=chat_options,
+        show_kind=True,
+        show_hide_bots=True,
     )

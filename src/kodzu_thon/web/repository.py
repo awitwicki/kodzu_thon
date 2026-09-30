@@ -22,6 +22,15 @@ class MessageFilters:
     edited_only: bool = False
     since: datetime | None = None
     until: datetime | None = None
+    chat_kind: str | None = None  # None = all, else one of CHAT_KINDS
+    hide_bots: bool = False
+
+
+# Chat-type groups the deleted feed can be narrowed to ("chats" vs "channels").
+CHAT_KINDS: dict[str, tuple[str, ...]] = {
+    "groups": ("group", "supergroup"),
+    "channels": ("channel",),
+}
 
 
 MESSAGE_SELECT = """
@@ -32,6 +41,7 @@ SELECT m.chat_id, m.id, m.sender_user_id, m.sender_chat_id, m.is_outgoing, m.sen
        c.title AS chat_title, c.type AS chat_type,
        u.first_name AS sender_first_name, u.last_name AS sender_last_name,
        u.username AS sender_username, u.photo_blob_id AS sender_photo_blob_id,
+       u.is_bot AS sender_is_bot,
        sc.title AS sender_chat_title, sc.photo_blob_id AS sender_chat_photo_blob_id,
        r.text AS reply_text, ru.first_name AS reply_first_name, ru.last_name AS reply_last_name,
        rsc.title AS reply_chat_title,
@@ -142,6 +152,11 @@ def _filter_clauses(filters: MessageFilters, params: list[Any]) -> list[str]:
     if filters.until is not None:
         params.append(filters.until)
         clauses.append(f"m.sent_at < ${len(params)}")
+    if filters.chat_kind is not None:
+        params.append(list(CHAT_KINDS[filters.chat_kind]))
+        clauses.append(f"c.type = ANY(${len(params)}::text[])")
+    if filters.hide_bots:
+        clauses.append("u.is_bot IS NOT TRUE")
     return clauses
 
 

@@ -7,7 +7,13 @@ from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException, Query, Request
 
-from kodzu_thon.web.repository import MAX_PAGE_SIZE, PAGE_SIZE, MessageFilters, Repository
+from kodzu_thon.web.repository import (
+    CHAT_KINDS,
+    MAX_PAGE_SIZE,
+    PAGE_SIZE,
+    MessageFilters,
+    Repository,
+)
 
 KEYSET_KEYS = ("before", "before_ts", "before_id")
 
@@ -42,6 +48,15 @@ def _parse_date(name: str, raw: str | None) -> date | None:
         raise HTTPException(status_code=422, detail=f"{name} must be a date") from None
 
 
+def _parse_chat_kind(raw: list[str]) -> str | None:
+    """The form has one `kind` checkbox per CHAT_KINDS entry. Unchecked boxes aren't
+    submitted, so none checked (a first visit) and all checked both mean no filter."""
+    kinds = set(raw)
+    if not kinds <= CHAT_KINDS.keys():
+        raise HTTPException(status_code=422, detail="kind must be one of " + ", ".join(CHAT_KINDS))
+    return kinds.pop() if len(kinds) == 1 else None
+
+
 def parse_filters(
     request: Request,
     q: Annotated[str | None, Query(max_length=200)] = None,
@@ -51,6 +66,8 @@ def parse_filters(
     edited: Annotated[int, Query(ge=0, le=1)] = 0,
     since: Annotated[str | None, Query()] = None,
     until: Annotated[str | None, Query()] = None,
+    kind: Annotated[list[str] | None, Query()] = None,
+    nobots: Annotated[int, Query(ge=0, le=1)] = 0,
 ) -> MessageFilters:
     tz = ZoneInfo(request.app.state.settings.timezone)
     since_date = _parse_date("since", since)
@@ -63,6 +80,8 @@ def parse_filters(
         edited_only=bool(edited),
         since=datetime.combine(since_date, time.min, tz) if since_date else None,
         until=datetime.combine(until_date, time.min, tz) if until_date else None,
+        chat_kind=_parse_chat_kind(kind or []),
+        hide_bots=bool(nobots),
     )
 
 

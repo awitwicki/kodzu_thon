@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from kodzu_thon.db import SCHEMA_VERSION
-from kodzu_thon.web.repository import PAGE_SIZE, MessageFilters
+from kodzu_thon.web.repository import CHAT_KINDS, PAGE_SIZE, MessageFilters
 
 NOW = datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
 
@@ -38,6 +38,7 @@ def make_message_row(**overrides: Any) -> dict:
         "sender_last_name": "Lee",
         "sender_username": "ann",
         "sender_photo_blob_id": None,
+        "sender_is_bot": False,
         "sender_chat_title": None,
         "sender_chat_photo_blob_id": None,
         "reply_text": None,
@@ -112,6 +113,7 @@ class FakeRepository:
             row["sender_last_name"] = user["last_name"]
             row["sender_username"] = user["username"]
             row["sender_photo_blob_id"] = user["photo_blob_id"]
+            row["sender_is_bot"] = user["is_bot"]
         self.messages.append(row)
         return row
 
@@ -161,6 +163,10 @@ class FakeRepository:
             rows = [r for r in rows if r["sent_at"] >= f.since]
         if f.until is not None:
             rows = [r for r in rows if r["sent_at"] < f.until]
+        if f.chat_kind is not None:
+            rows = [r for r in rows if r["chat_type"] in CHAT_KINDS[f.chat_kind]]
+        if f.hide_bots:
+            rows = [r for r in rows if not r["sender_is_bot"]]
         return rows
 
     @staticmethod

@@ -209,3 +209,22 @@ async def test_statement_timeout_setting_is_honoured(dsn):
         assert await repo.ping() is True  # the connection survives a cancelled statement
     finally:
         await pool.close()
+
+
+async def test_chat_kind_and_hide_bots_filters(repo, dsn):
+    bot = make_user(id=9, first_name="Robo", username="robo_bot", bot=True)
+    await write(
+        dsn,
+        rec(1, text="human"),
+        rec(2, text="beep", sender=bot),
+        DeletionRecord(chat_id=GROUP_ID, message_ids=(1, 2), observed_at=NOW),
+    )
+    all_rows = await repo.deleted_messages()
+    assert {r["id"]: r["sender_is_bot"] for r in all_rows} == {1: False, 2: True}
+    no_bots = await repo.deleted_messages(filters=MessageFilters(hide_bots=True))
+    assert [r["id"] for r in no_bots] == [1]
+    groups = await repo.deleted_messages(filters=MessageFilters(chat_kind="groups"))
+    assert {r["id"] for r in groups} == {1, 2}
+    assert await repo.deleted_messages(filters=MessageFilters(chat_kind="channels")) == []
+    timeline = await repo.chat_messages(GROUP_ID, filters=MessageFilters(hide_bots=True))
+    assert [r["id"] for r in timeline] == [1]

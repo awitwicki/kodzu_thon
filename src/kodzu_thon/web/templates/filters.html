@@ -9,6 +9,14 @@
     {% endfor %}
   </select></label>
   {% endif %}
+  {% if show_kind is defined %}
+  {% for value, label in [("groups", "chats"), ("channels", "channels")] %}
+  <label><input type="checkbox" name="kind" value="{{ value }}"{% if filters.chat_kind in (none, value) %} checked{% endif %}> {{ label }}</label>
+  {% endfor %}
+  {% endif %}
+  {% if show_hide_bots is defined %}
+  <label><input type="checkbox" name="nobots" value="1"{% if filters.hide_bots %} checked{% endif %}> hide messages from bots</label>
+  {% endif %}
   {% if not compact %}
   <label>Since<input type="date" name="since" value="{{ query.get('since', '') }}"></label>
   <label>Until (exclusive)<input type="date" name="until" value="{{ query.get('until', '') }}"></label>
