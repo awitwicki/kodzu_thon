@@ -12,6 +12,7 @@ from kodzu_thon.services.message_extract import (
     DeletionRecord,
     EditRecord,
     MessageTarget,
+    TopicRecord,
     extract_message,
 )
 from kodzu_thon.services.message_store import MessageStore
@@ -228,3 +229,31 @@ async def test_chat_kind_and_hide_bots_filters(repo, dsn):
     assert await repo.deleted_messages(filters=MessageFilters(chat_kind="channels")) == []
     timeline = await repo.chat_messages(GROUP_ID, filters=MessageFilters(hide_bots=True))
     assert [r["id"] for r in timeline] == [1]
+
+
+async def test_forum_topics(repo, dsn):
+    forum = make_supergroup(forum=True)
+
+    def frec(msg_id, **kw):
+        msg = make_message(id=msg_id, peer=types.PeerChannel(124), **kw)
+        return extract_message(msg, forum, make_user(), max_media_bytes=MAX)
+
+    await write(
+        dsn,
+        frec(1, text="general"),
+        frec(2, text="news", topic=5),
+        frec(3, text="reply", topic=5, reply_to=2),
+        TopicRecord(GROUP_ID, 5, "News", None, False),
+        TopicRecord(GROUP_ID, 5, "News renamed", 7, True),
+    )
+    assert (await repo.get_chat(GROUP_ID))["is_forum"] is True
+    topics = await repo.chat_topics(GROUP_ID)
+    assert {t["id"]: (t["title"], t["closed"], t["message_count"]) for t in topics} == {
+        1: (None, False, 1),
+        5: ("News renamed", True, 2),
+    }
+    rows = await repo.chat_messages(GROUP_ID, filters=MessageFilters(topic_id=5))
+    assert [(r["id"], r["topic_id"], r["topic_title"]) for r in rows] == [
+        (3, 5, "News renamed"),
+        (2, 5, "News renamed"),
+    ]

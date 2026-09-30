@@ -26,6 +26,7 @@ def _patch_collaborators(mocker):
     client_cls = mocker.patch("kodzu_thon.app.TelegramClient")
     store_cls = mocker.patch("kodzu_thon.app.MessageStore")
     fetcher_cls = mocker.patch("kodzu_thon.app.MediaFetcher")
+    mocker.patch("kodzu_thon.app.TopicTracker")
     return client_cls, store_cls, fetcher_cls
 
 
@@ -52,6 +53,7 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
     fake_ctx.message_store.start = AsyncMock()
     fake_ctx.message_store.stop = AsyncMock()
     fake_ctx.media_fetcher.stop = AsyncMock()
+    fake_ctx.topic_tracker.stop = AsyncMock()
     mocker.patch("kodzu_thon.app.build_app", return_value=(client, fake_ctx))
 
     await run_app()
@@ -59,6 +61,7 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
     client.start.assert_awaited_once()
     fake_ctx.message_store.start.assert_awaited_once()
     fake_ctx.media_fetcher.stop.assert_awaited_once()
+    fake_ctx.topic_tracker.stop.assert_awaited_once()
     fake_ctx.message_store.stop.assert_awaited_once()
     client.disconnect.assert_awaited_once()
 
@@ -66,6 +69,7 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
 async def test_shutdown_isolates_exception_in_first_stage(capsys):
     ctx = MagicMock()
     ctx.media_fetcher.stop = AsyncMock(side_effect=RuntimeError("fetcher boom"))
+    ctx.topic_tracker.stop = AsyncMock()
     ctx.message_store.stop = AsyncMock()
     client = MagicMock()
     client.disconnect = AsyncMock()
@@ -81,6 +85,7 @@ async def test_shutdown_isolates_exception_in_first_stage(capsys):
 async def test_shutdown_continues_after_multiple_failures(capsys):
     ctx = MagicMock()
     ctx.media_fetcher.stop = AsyncMock(side_effect=RuntimeError("fetcher boom"))
+    ctx.topic_tracker.stop = AsyncMock()
     ctx.message_store.stop = AsyncMock(side_effect=RuntimeError("store boom"))
     client = MagicMock()
     client.disconnect = AsyncMock()

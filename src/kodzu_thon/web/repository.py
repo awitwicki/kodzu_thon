@@ -23,6 +23,7 @@ class MessageFilters:
     since: datetime | None = None
     until: datetime | None = None
     chat_kind: str | None = None  # None = all, else one of CHAT_KINDS
+    topic_id: int | None = None
     hide_bots: bool = False
 
 
@@ -37,8 +38,8 @@ MESSAGE_SELECT = """
 SELECT m.chat_id, m.id, m.sender_user_id, m.sender_chat_id, m.is_outgoing, m.sent_at, m.text,
        m.reply_to_msg_id, m.grouped_id, m.fwd_from_user_id, m.fwd_from_chat_id, m.fwd_from_name,
        m.fwd_date, m.media_type, m.media_size, m.media_meta, m.media_blob_id, m.edited_at,
-       m.edit_count, m.deleted_at,
-       c.title AS chat_title, c.type AS chat_type,
+       m.edit_count, m.deleted_at, m.topic_id,
+       c.title AS chat_title, c.type AS chat_type, ft.title AS topic_title,
        u.first_name AS sender_first_name, u.last_name AS sender_last_name,
        u.username AS sender_username, u.photo_blob_id AS sender_photo_blob_id,
        u.is_bot AS sender_is_bot,
@@ -48,6 +49,7 @@ SELECT m.chat_id, m.id, m.sender_user_id, m.sender_chat_id, m.is_outgoing, m.sen
        fu.first_name AS fwd_first_name, fu.last_name AS fwd_last_name, fc.title AS fwd_chat_title
 FROM messages m
 JOIN chats c ON c.id = m.chat_id
+LEFT JOIN forum_topics ft ON ft.chat_id = m.chat_id AND ft.id = m.topic_id
 LEFT JOIN users u ON u.id = m.sender_user_id
 LEFT JOIN chats sc ON sc.id = m.sender_chat_id
 LEFT JOIN messages r ON r.chat_id = m.chat_id AND r.id = m.reply_to_msg_id
@@ -62,12 +64,20 @@ MESSAGE_SELECT_WITH_RAW = MESSAGE_SELECT.replace(
 )
 
 LIST_CHATS = (
-    "SELECT id, type, title, username, photo_blob_id, first_seen_at, last_message_at "
+    "SELECT id, type, title, username, photo_blob_id, first_seen_at, last_message_at, is_forum "
     "FROM chats ORDER BY last_message_at DESC NULLS LAST, id"
 )
 GET_CHAT = (
-    "SELECT id, type, title, username, photo_blob_id, first_seen_at, last_message_at "
+    "SELECT id, type, title, username, photo_blob_id, first_seen_at, last_message_at, is_forum "
     "FROM chats WHERE id = $1"
+)
+CHAT_TOPICS = (
+    "SELECT t.topic_id AS id, ft.title, coalesce(ft.closed, false) AS closed, "
+    "t.message_count, t.last_message_at FROM ("
+    "SELECT topic_id, count(*) AS message_count, max(sent_at) AS last_message_at "
+    "FROM messages WHERE chat_id = $1 AND topic_id IS NOT NULL GROUP BY topic_id) t "
+    "LEFT JOIN forum_topics ft ON ft.chat_id = $1 AND ft.id = t.topic_id "
+    "ORDER BY t.last_message_at DESC, t.topic_id"
 )
 GET_USER = (
     "SELECT id, first_name, last_name, username, is_bot, is_self, photo_blob_id, "
@@ -155,6 +165,9 @@ def _filter_clauses(filters: MessageFilters, params: list[Any]) -> list[str]:
     if filters.chat_kind is not None:
         params.append(list(CHAT_KINDS[filters.chat_kind]))
         clauses.append(f"c.type = ANY(${len(params)}::text[])")
+    if filters.topic_id is not None:
+        params.append(filters.topic_id)
+        clauses.append(f"m.topic_id = ${len(params)}")
     if filters.hide_bots:
         clauses.append("u.is_bot IS NOT TRUE")
     return clauses
@@ -228,6 +241,9 @@ class Repository:
 
     async def get_chat(self, chat_id: int) -> dict | None:
         return await self._fetchrow(GET_CHAT, chat_id)
+
+    async def chat_topics(self, chat_id: int) -> list[dict]:
+        return await self._fetch(CHAT_TOPICS, chat_id)
 
     async def chat_messages(
         self,

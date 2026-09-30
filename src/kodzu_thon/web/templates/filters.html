@@ -1,4 +1,5 @@
 <form class="filters" method="get" action="{{ path }}">
+  {% if filters.topic_id %}<input type="hidden" name="topic" value="{{ filters.topic_id }}">{% endif %}
   <label>Text<input type="search" name="q" maxlength="200" value="{{ filters.q or '' }}"></label>
   <label>From user id<input type="number" name="from" min="1" value="{{ filters.sender_id or '' }}"></label>
   {% if chat_options is defined %}

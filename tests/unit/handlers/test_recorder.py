@@ -1,7 +1,14 @@
 import re
 from unittest.mock import AsyncMock
 
-from kodzu_thon.handlers.recorder import _deleted_logic, _edited_logic, _new_message_logic
+from telethon.tl import types
+
+from kodzu_thon.handlers.recorder import (
+    _deleted_logic,
+    _edited_logic,
+    _new_message_logic,
+    _topic_service_logic,
+)
 from kodzu_thon.services.message_extract import DeletionRecord, EditRecord, MessageRecord
 from tests.factories import NOW, make_message, make_supergroup, make_user
 
@@ -114,3 +121,47 @@ async def test_errors_are_logged_not_raised(fake_event, fake_ctx, capsys):
     fake_ctx.message_store.enqueue.side_effect = RuntimeError("boom")
     await _new_message_logic(fake_event, fake_ctx)
     assert "recorder: boom" in capsys.readouterr().err
+
+
+async def test_forum_message_is_reported_to_topic_tracker(fake_event, fake_ctx):
+    chat = make_supergroup(forum=True)
+    _group_event(fake_event, make_message(id=10, topic=5), chat)
+    await _new_message_logic(fake_event, fake_ctx)
+    rec = fake_ctx.message_store.enqueue.call_args.args[0]
+    assert rec.topic_id == 5
+    fake_ctx.topic_tracker.observe.assert_called_once_with(chat, rec)
+
+
+def _service(action, msg_id=50, reply_to=None):
+    return types.UpdateNewChannelMessage(
+        message=types.MessageService(
+            id=msg_id, peer_id=types.PeerChannel(124), date=NOW, action=action, reply_to=reply_to
+        ),
+        pts=1,
+        pts_count=1,
+    )
+
+
+async def test_topic_create_service_message(fake_ctx):
+    action = types.MessageActionTopicCreate(title="News", icon_color=0, icon_emoji_id=77)
+    await _topic_service_logic(_service(action), fake_ctx)
+    fake_ctx.topic_tracker.topic_created.assert_called_once_with(-1000000000124, 50, "News", 77)
+
+
+async def test_topic_edit_service_message(fake_ctx):
+    reply = types.MessageReplyHeader(forum_topic=True, reply_to_msg_id=5)
+    await _topic_service_logic(
+        _service(types.MessageActionTopicEdit(title="Renamed"), reply_to=reply), fake_ctx
+    )
+    fake_ctx.topic_tracker.topic_edited.assert_called_once_with(
+        types.PeerChannel(124), -1000000000124, 5
+    )
+
+
+async def test_other_updates_are_ignored(fake_ctx):
+    await _topic_service_logic(_service(types.MessageActionPinMessage()), fake_ctx)
+    await _topic_service_logic(
+        types.UpdateNewChannelMessage(message=make_message(), pts=1, pts_count=1), fake_ctx
+    )
+    fake_ctx.topic_tracker.topic_created.assert_not_called()
+    fake_ctx.topic_tracker.topic_edited.assert_not_called()

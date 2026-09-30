@@ -10,6 +10,7 @@
     <div>
       <a href="/chats/{{ c.id }}">{{ c.title or c.id }}</a>
       <span class="badge">{{ c.type }}</span>
+      {% if c.is_forum %}<span class="badge">topics</span>{% endif %}
       {% if c.username %}<span class="muted">@{{ c.username }}</span>{% endif %}
       <div class="muted">{% if c.last_message_at %}last message {{ c.last_message_at | localtime }}{% else %}no messages yet{% endif %}</div>
     </div>

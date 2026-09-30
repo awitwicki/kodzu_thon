@@ -242,3 +242,71 @@ async def test_timeline_hide_bots(authed_client, fake_repo):
     assert 'id="m1"' in r.text and 'id="m2"' not in r.text
     assert 'name="nobots" value="1" checked' in r.text
     assert fake_repo.calls[-1][1]["filters"] == MessageFilters(hide_bots=True)
+
+
+def seed_forum(fake_repo):
+    seed(fake_repo)
+    fake_repo.add_chat(id=-400, title="Forum", type="supergroup", is_forum=True)
+    fake_repo.add_topic(-400, 5, title="News <b>")
+    fake_repo.add_topic(-400, 6, title="Old", closed=True)
+    fake_repo.add_message(chat_id=-400, id=10, topic_id=1, text="general talk")
+    fake_repo.add_message(chat_id=-400, id=11, topic_id=5, reply_to_msg_id=5, text="in news")
+    fake_repo.add_message(
+        chat_id=-400, id=12, topic_id=5, reply_to_msg_id=11, reply_text="in news", text="re"
+    )
+    fake_repo.add_message(
+        chat_id=-400, id=13, topic_id=6, text="old", sent_at=NOW - timedelta(days=1)
+    )
+    return fake_repo
+
+
+async def test_chat_list_marks_forums(authed_client, fake_repo):
+    seed_forum(fake_repo)
+    body = (await authed_client.get("/")).text
+    assert body.count('<span class="badge">topics</span>') == 1
+
+
+async def test_forum_timeline_lists_topics_and_labels_messages(authed_client, fake_repo):
+    seed_forum(fake_repo)
+    r = await authed_client.get("/chats/-400")
+    body = r.text
+    assert '<a href="/chats/-400" class="current">All topics</a>' in body
+    assert 'href="/chats/-400?topic=1">General <span class="muted">1</span>' in body
+    assert 'href="/chats/-400?topic=5">News &lt;b&gt; <span class="muted">2</span>' in body
+    assert 'href="/chats/-400?topic=6">Old (closed) <span class="muted">1</span>' in body
+    assert body.index("?topic=5") < body.index("?topic=6")  # most recently active first
+    assert '<a class="badge topic" href="/chats/-400?topic=5">News &lt;b&gt;</a>' in body
+    # the topic root is not a reply; a real reply inside the topic still is
+    assert body.count('class="reply"') == 1 and "/chats/-400/messages/11" in body
+    assert body.count("reply to") == 1
+
+
+async def test_forum_timeline_filters_by_topic(authed_client, fake_repo):
+    seed_forum(fake_repo)
+    r = await authed_client.get("/chats/-400?topic=5&nobots=1")
+    body = r.text
+    assert 'id="m11"' in body and 'id="m12"' in body and 'id="m10"' not in body
+    assert "<h2>News &lt;b&gt;</h2>" in body
+    assert 'class="current">News &lt;b&gt;' in body
+    assert '<input type="hidden" name="topic" value="5">' in body
+    assert 'class="badge topic"' not in body
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(topic_id=5, hide_bots=True)
+    assert (await authed_client.get("/chats/-400?topic=x")).status_code == 422
+    assert (await authed_client.get("/chats/-400?topic=")).status_code == 200
+
+
+async def test_non_forum_timeline_has_no_topic_nav(authed_client, fake_repo):
+    seed_forum(fake_repo)
+    fake_repo.add_message(chat_id=-100, id=1, text="plain", reply_to_msg_id=None)
+    body = (await authed_client.get("/chats/-100")).text
+    assert "All topics" not in body
+    assert "chat_topics" not in [c[0] for c in fake_repo.calls]
+
+
+async def test_permalink_and_feeds_show_topic(authed_client, fake_repo):
+    seed_forum(fake_repo)
+    fake_repo.add_message(chat_id=-400, id=14, topic_id=9, text="x", deleted_at=NOW)
+    body = (await authed_client.get("/chats/-400/messages/11")).text
+    assert '<a href="/chats/-400?topic=5">News &lt;b&gt;</a> - message 11' in body
+    body = (await authed_client.get("/deleted")).text
+    assert '<a href="/chats/-400">Forum</a> &rsaquo; <a href="/chats/-400?topic=9">topic #9</a>' in body

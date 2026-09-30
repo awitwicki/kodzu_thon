@@ -5,7 +5,8 @@ to ctx.message_store / ctx.media_fetcher; nothing blocks the event loop here."""
 import sys
 from datetime import UTC, datetime
 
-from telethon import events
+from telethon import events, utils
+from telethon.tl import types
 
 from kodzu_thon.services.message_extract import (
     DeletionRecord,
@@ -40,6 +41,7 @@ async def _new_message_logic(event, ctx) -> None:
         ctx.message_store.enqueue(rec)
         ctx.media_fetcher.schedule_for_message(event.message, rec)
         ctx.media_fetcher.schedule_profile_photos(chat, sender, rec)
+        ctx.topic_tracker.observe(chat, rec)
     except Exception as e:
         print(f"recorder: {e}", file=sys.stderr)
 
@@ -74,6 +76,27 @@ async def _deleted_logic(event, ctx) -> None:
         print(f"recorder: {e}", file=sys.stderr)
 
 
+async def _topic_service_logic(update, ctx) -> None:
+    """Forum topic create/edit arrive as service messages, which events.NewMessage skips."""
+    try:
+        msg = getattr(update, "message", None)
+        if not isinstance(msg, types.MessageService):
+            return
+        action = msg.action
+        chat_id = utils.get_peer_id(msg.peer_id)
+        if isinstance(action, types.MessageActionTopicCreate):
+            ctx.topic_tracker.topic_created(chat_id, msg.id, action.title, action.icon_emoji_id)
+        elif isinstance(action, types.MessageActionTopicEdit):
+            reply = msg.reply_to
+            topic_id = getattr(reply, "reply_to_top_id", None) or getattr(
+                reply, "reply_to_msg_id", None
+            )
+            if topic_id:
+                ctx.topic_tracker.topic_edited(msg.peer_id, chat_id, topic_id)
+    except Exception as e:
+        print(f"recorder: {e}", file=sys.stderr)
+
+
 def register(client, ctx) -> None:
     @client.on(events.NewMessage())
     async def _on_new_message(event):
@@ -86,3 +109,7 @@ def register(client, ctx) -> None:
     @client.on(events.MessageDeleted())
     async def _on_deleted(event):
         await _deleted_logic(event, ctx)
+
+    @client.on(events.Raw(types.UpdateNewChannelMessage))
+    async def _on_channel_service_message(update):
+        await _topic_service_logic(update, ctx)

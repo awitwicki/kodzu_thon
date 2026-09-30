@@ -226,3 +226,18 @@ async def test_chat_kind_and_hide_bots_filters():
 
 async def test_message_select_exposes_sender_is_bot():
     assert "u.is_bot AS sender_is_bot" in repo_mod.MESSAGE_SELECT
+
+
+async def test_topic_filter_and_topic_join():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).chat_messages(-100, filters=MessageFilters(topic_id=5))
+    sql, args = conn.calls[-1]
+    assert "m.topic_id = $2" in sql and args == (-100, 5, 101)
+    assert "LEFT JOIN forum_topics ft ON ft.chat_id = m.chat_id AND ft.id = m.topic_id" in sql
+    assert "ft.title AS topic_title" in sql
+
+
+async def test_chat_topics_query():
+    conn = FakeConn(fetch_results=[[{"id": 1, "title": None}]])
+    assert await make_repo(conn).chat_topics(-100) == [{"id": 1, "title": None}]
+    assert conn.calls[-1] == (repo_mod.CHAT_TOPICS, (-100,))

@@ -31,6 +31,11 @@ button[type=submit] { background: var(--accent); color: #fff; border-color: var(
 .badge { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 10px;
          background: var(--note); color: var(--muted); margin-left: 6px; }
 .badge.deleted { background: #fee2e2; color: var(--danger); }
+.badge.topic { background: #dbeafe; color: #1d4ed8; text-decoration: none; }
+.topics { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.topics a { padding: 3px 10px; border: 1px solid var(--line); border-radius: 14px;
+            text-decoration: none; background: var(--card); }
+.topics a.current { border-color: currentColor; font-weight: 600; }
 .badge.edited { background: #fef3c7; color: var(--warn); }
 .muted { color: var(--muted); font-size: 13px; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }

@@ -14,11 +14,14 @@ def make_user(id=7, first_name="Ann", last_name="Lee", username="ann", bot=False
     )
 
 
-def make_channel(id=123, title="Chan", username=None, broadcast=True, megagroup=False, photo_id=555):
+def make_channel(
+    id=123, title="Chan", username=None, broadcast=True, megagroup=False, photo_id=555,
+    forum=False,
+):
     photo = types.ChatPhoto(photo_id=photo_id, dc_id=2) if photo_id else types.ChatPhotoEmpty()
     return types.Channel(
         id=id, title=title, photo=photo, date=NOW, broadcast=broadcast, megagroup=megagroup,
-        username=username,
+        username=username, forum=forum,
     )
 
 
@@ -51,9 +54,19 @@ def make_document_media(doc_id=2000, mime="application/pdf", size=1234, attribut
 
 def make_message(
     id=1, peer=None, text="hi", out=False, media=None, fwd_from=None, grouped_id=None,
-    reply_to=None, edit_date=None, from_id=None,
+    reply_to=None, edit_date=None, from_id=None, topic=None,
 ):
-    reply = types.MessageReplyHeader(reply_to_msg_id=reply_to) if reply_to else None
+    """`topic` puts the message in that forum topic (as Telegram does: forum_topic plus the
+    topic root in reply_to_msg_id, or in reply_to_top_id when it also replies to something)."""
+    reply = None
+    if topic:
+        reply = types.MessageReplyHeader(
+            forum_topic=True,
+            reply_to_msg_id=reply_to or topic,
+            reply_to_top_id=topic if reply_to else None,
+        )
+    elif reply_to:
+        reply = types.MessageReplyHeader(reply_to_msg_id=reply_to)
     return types.Message(
         id=id, peer_id=peer or types.PeerChannel(123), date=NOW, message=text, out=out,
         media=media, fwd_from=fwd_from, grouped_id=grouped_id, reply_to=reply,

@@ -68,6 +68,7 @@ def parse_filters(
     until: Annotated[str | None, Query()] = None,
     kind: Annotated[list[str] | None, Query()] = None,
     nobots: Annotated[int, Query(ge=0, le=1)] = 0,
+    topic: Annotated[str | None, Query()] = None,
 ) -> MessageFilters:
     tz = ZoneInfo(request.app.state.settings.timezone)
     since_date = _parse_date("since", since)
@@ -82,6 +83,7 @@ def parse_filters(
         until=datetime.combine(until_date, time.min, tz) if until_date else None,
         chat_kind=_parse_chat_kind(kind or []),
         hide_bots=bool(nobots),
+        topic_id=_parse_int("topic", topic, ge=1),
     )
 
 

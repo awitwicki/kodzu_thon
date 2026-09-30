@@ -21,6 +21,7 @@ from kodzu_thon.services.message_extract import (
     MediaSkipped,
     MessageRecord,
     MessageTarget,
+    TopicRecord,
     UserPhotoTarget,
     UserSnapshot,
 )
@@ -29,10 +30,11 @@ CONNECTION_ERRORS = (asyncpg.PostgresConnectionError, OSError, TimeoutError)
 _STOP = object()
 
 UPSERT_CHAT = """
-INSERT INTO chats (id, type, title, username, photo_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO chats (id, type, title, username, photo_id, is_forum)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO UPDATE SET
   type = EXCLUDED.type,
+  is_forum = EXCLUDED.is_forum,
   title = EXCLUDED.title,
   username = EXCLUDED.username,
   photo_blob_id = CASE WHEN chats.photo_id IS DISTINCT FROM EXCLUDED.photo_id
@@ -72,14 +74,24 @@ WHERE NOT EXISTS (
 INSERT_MESSAGE = """
 INSERT INTO messages (chat_id, id, sender_user_id, sender_chat_id, is_outgoing, sent_at, text,
   reply_to_msg_id, grouped_id, fwd_from_user_id, fwd_from_chat_id, fwd_from_name, fwd_date,
-  media_type, media_size, media_meta, raw, edited_at)
+  media_type, media_size, media_meta, raw, topic_id, edited_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb,
-  $17::jsonb, $18)
+  $17::jsonb, $18, $19)
 ON CONFLICT (chat_id, id) DO NOTHING
 """
 
 UPDATE_CHAT_LAST_MESSAGE = """
 UPDATE chats SET last_message_at = GREATEST(last_message_at, $2) WHERE id = $1
+"""
+
+UPSERT_TOPIC = """
+INSERT INTO forum_topics (chat_id, id, title, icon_emoji_id, closed)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (chat_id, id) DO UPDATE SET
+  title = EXCLUDED.title,
+  icon_emoji_id = EXCLUDED.icon_emoji_id,
+  closed = EXCLUDED.closed,
+  updated_at = now()
 """
 
 SELECT_MESSAGE_FOR_EDIT = """
@@ -388,6 +400,10 @@ class MessageStore:
                 await self._apply_deletion(conn, item)
             case BlobRecord():
                 await self._apply_blob(conn, item)
+            case TopicRecord():
+                await conn.execute(
+                    UPSERT_TOPIC, item.chat_id, item.id, item.title, item.icon_emoji_id, item.closed
+                )
             case MediaSkipped():
                 await conn.execute(
                     MARK_MEDIA_SKIPPED, item.chat_id, item.message_id, item.media_id, item.reason
@@ -397,7 +413,13 @@ class MessageStore:
 
     async def _upsert_chat(self, conn, chat: ChatSnapshot) -> None:
         await conn.execute(
-            UPSERT_CHAT, chat.id, chat.type, chat.title, chat.username, chat.photo_id
+            UPSERT_CHAT,
+            chat.id,
+            chat.type,
+            chat.title,
+            chat.username,
+            chat.photo_id,
+            chat.is_forum,
         )
 
     async def _upsert_user(self, conn, user: UserSnapshot) -> None:
@@ -442,6 +464,7 @@ class MessageStore:
             rec.media_size,
             _json_or_none(rec.media_meta),
             json.dumps(rec.raw),
+            rec.topic_id,
         )
 
     async def _apply_message(self, conn, rec: MessageRecord) -> None:

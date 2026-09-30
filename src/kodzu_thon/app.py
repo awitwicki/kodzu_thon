@@ -10,6 +10,7 @@ from telethon import TelegramClient
 from kodzu_thon import handlers
 from kodzu_thon.config import Settings
 from kodzu_thon.services.air_alarm import AirAlarmService
+from kodzu_thon.services.forum_topics import TopicTracker
 from kodzu_thon.services.gemini import GeminiClient
 from kodzu_thon.services.media_fetcher import MediaFetcher
 from kodzu_thon.services.message_store import MessageStore
@@ -26,6 +27,7 @@ class AppContext:
     influx: InfluxWriter
     message_store: MessageStore
     media_fetcher: MediaFetcher
+    topic_tracker: TopicTracker
     two_hundred: TwoHundredService
     settings: Settings
     help_lines: list[tuple[str, str]] = field(default_factory=list)
@@ -45,6 +47,7 @@ def build_app() -> tuple[TelegramClient, AppContext]:
         influx=InfluxWriter(settings.influx_host, settings.influx_port, settings.influx_db),
         message_store=message_store,
         media_fetcher=MediaFetcher(client, message_store, settings.record_media_max_bytes),
+        topic_tracker=TopicTracker(client, message_store),
         two_hundred=TwoHundredService(),
         settings=settings,
     )
@@ -97,11 +100,16 @@ def _remove_stop_signal_handlers(signals: list[signal.Signals]) -> None:
 
 
 async def _shutdown(ctx: AppContext, client: TelegramClient) -> None:
-    """Run the three shutdown stages, isolating exceptions so a failure in one
+    """Run the shutdown stages, isolating exceptions so a failure in one
     (e.g. the media fetcher) does not prevent the others (e.g. flushing the
     message store's queue) from running."""
     # bio_task.cancel()
-    for stop in (ctx.media_fetcher.stop, ctx.message_store.stop, client.disconnect):
+    for stop in (
+        ctx.media_fetcher.stop,
+        ctx.topic_tracker.stop,
+        ctx.message_store.stop,
+        client.disconnect,
+    ):
         try:
             await stop()
         except Exception as e:

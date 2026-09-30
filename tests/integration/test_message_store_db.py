@@ -6,6 +6,7 @@ import json
 import pytest
 from telethon.tl import types
 
+from kodzu_thon.db import SCHEMA_VERSION
 from kodzu_thon.db.migrate import apply_migrations
 from kodzu_thon.services.message_extract import (
     BlobRecord,
@@ -185,6 +186,6 @@ async def test_media_skipped_marks_meta(db, dsn):
 async def test_migrations_run_by_store_on_first_connect(db, dsn):
     # `db` reset the schema; the store must create it on its own.
     await write(dsn, rec(1))
-    assert await db.fetchval("SELECT max(version) FROM schema_migrations") == 1
+    assert await db.fetchval("SELECT max(version) FROM schema_migrations") == SCHEMA_VERSION
     assert await db.fetchval("SELECT count(*) FROM messages") == 1
     assert await apply_migrations(db) == []

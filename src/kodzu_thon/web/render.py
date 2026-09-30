@@ -7,7 +7,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from kodzu_thon.web.textfmt import display_name, format_text, human_size, local_time
+from kodzu_thon.web.textfmt import display_name, format_text, human_size, local_time, topic_name
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -24,6 +24,7 @@ def build_env(timezone: str) -> Environment:
     env.filters["localtime"] = lambda value: local_time(value, timezone)
     env.filters["human_size"] = human_size
     env.globals["display_name"] = display_name
+    env.globals["topic_name"] = topic_name
     return env
 
 

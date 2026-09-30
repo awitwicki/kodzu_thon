@@ -37,6 +37,8 @@ async def chat_timeline(
     chat = await repo.get_chat(chat_id)
     if chat is None:
         raise HTTPException(status_code=404)
+    topics = await repo.chat_topics(chat_id) if chat["is_forum"] else []
+    topic = next((t for t in topics if t["id"] == filters.topic_id), None)
     rows = await repo.chat_messages(chat_id, before_id=before, limit=limit, filters=filters)
     page, last = paginate(rows, limit)
     next_url = next_page_url(request, before=last["id"]) if last else None
@@ -50,4 +52,6 @@ async def chat_timeline(
         filters=filters,
         q=filters.q,
         show_hide_bots=True,
+        topics=topics,
+        topic=topic,
     )

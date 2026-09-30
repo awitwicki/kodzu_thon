@@ -5,12 +5,16 @@ from telethon.tl import types
 
 from kodzu_thon.services.message_extract import (
     DOWNLOADABLE_MEDIA_TYPES,
+    GENERAL_TOPIC_ID,
     ChatSnapshot,
+    TopicRecord,
     UserSnapshot,
     chat_snapshot,
     classify_media,
     extract_message,
     matches_command,
+    topic_id_of,
+    topic_record,
     user_snapshot,
 )
 from tests.factories import (
@@ -163,3 +167,35 @@ def test_matches_command():
     assert matches_command("TR", patterns)
     assert not matches_command("ppo now", patterns)
     assert not matches_command("", patterns)
+
+
+def test_forum_chat_snapshot_is_flagged():
+    assert chat_snapshot(make_supergroup(forum=True)).is_forum is True
+    assert chat_snapshot(make_supergroup()).is_forum is False
+
+
+def test_topic_id_in_forum_and_outside():
+    forum = make_supergroup(forum=True)
+    assert topic_id_of(make_message(), make_supergroup()) is None
+    assert topic_id_of(make_message(topic=5), make_supergroup()) is None
+    assert topic_id_of(make_message(), forum) == GENERAL_TOPIC_ID
+    assert topic_id_of(make_message(reply_to=3), forum) == GENERAL_TOPIC_ID  # reply in General
+    assert topic_id_of(make_message(topic=5), forum) == 5
+    assert topic_id_of(make_message(topic=5, reply_to=9), forum) == 5
+
+
+def test_extract_message_sets_topic_id():
+    msg = make_message(id=10, topic=5, reply_to=9, peer=types.PeerChannel(124))
+    rec = extract_message(msg, make_supergroup(forum=True), make_user(), max_media_bytes=10)
+    assert rec.topic_id == 5 and rec.reply_to_msg_id == 9 and rec.chat.is_forum is True
+
+
+def test_topic_record_skips_deleted_topics():
+    topic = types.ForumTopic(
+        id=5, date=NOW, title="News", icon_color=0, top_message=5, read_inbox_max_id=0,
+        read_outbox_max_id=0, unread_count=0, unread_mentions_count=0,
+        unread_reactions_count=0, from_id=types.PeerUser(7),
+        notify_settings=types.PeerNotifySettings(), closed=True, icon_emoji_id=77,
+    )
+    assert topic_record(-100, topic) == TopicRecord(-100, 5, "News", 77, True)
+    assert topic_record(-100, types.ForumTopicDeleted(id=6)) is None

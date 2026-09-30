@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import json
 from unittest.mock import AsyncMock
 
@@ -14,6 +15,7 @@ from kodzu_thon.services.message_extract import (
     MediaSkipped,
     MessageRecord,
     MessageTarget,
+    TopicRecord,
     UserPhotoTarget,
     UserSnapshot,
 )
@@ -105,8 +107,9 @@ async def test_message_is_written_with_parties_in_order():
     args = conn.args_for(ms.INSERT_MESSAGE)[0]
     assert args[0] == CHAT.id and args[1] == 10 and args[2] == USER.id and args[6] == "hello"
     assert json.loads(args[16]) == {"_": "Message", "id": 10}
-    assert args[17] is None  # edited_at
-    assert conn.args_for(ms.UPSERT_CHAT)[0] == (CHAT.id, "supergroup", "Grp", None, 555)
+    assert args[17] is None  # topic_id
+    assert args[18] is None  # edited_at
+    assert conn.args_for(ms.UPSERT_CHAT)[0] == (CHAT.id, "supergroup", "Grp", None, 555, False)
     assert conn.args_for(ms.UPSERT_USER)[0] == (7, "Ann", "Lee", "ann", False, False, 777)
 
 
@@ -235,7 +238,7 @@ async def test_edit_of_unknown_message_inserts_it():
     conn = FakeConn(fetchrow_results=[None])
     await run_store(make_store(conn), EditRecord(message=make_record(1), edited_at=NOW))
     assert ms.INSERT_MESSAGE in conn.sqls() and ms.INSERT_EDIT not in conn.sqls()
-    assert conn.args_for(ms.INSERT_MESSAGE)[0][17] == NOW
+    assert conn.args_for(ms.INSERT_MESSAGE)[0][18] == NOW
 
 
 async def test_deletion_in_channel_and_global():
@@ -382,3 +385,20 @@ async def test_database_created_message_is_logged_when_missing(mocker, capsys):
     await run_store(make_store(conn))
 
     assert "database did not exist, created it" in capsys.readouterr().err
+
+
+async def test_forum_message_writes_topic_id_and_forum_flag():
+    forum = ChatSnapshot(
+        id=CHAT.id, type="supergroup", title="Grp", username=None, photo_id=555, is_forum=True
+    )
+    rec = dataclasses.replace(make_record(msg_id=10, chat=forum), topic_id=42)
+    conn = FakeConn()
+    await run_store(make_store(conn), rec)
+    assert conn.args_for(ms.INSERT_MESSAGE)[0][17] == 42
+    assert conn.args_for(ms.UPSERT_CHAT)[0][5] is True
+
+
+async def test_topic_record_is_upserted():
+    conn = FakeConn()
+    await run_store(make_store(conn), TopicRecord(CHAT.id, 42, "News", 5, True))
+    assert conn.args_for(ms.UPSERT_TOPIC) == [(CHAT.id, 42, "News", 5, True)]

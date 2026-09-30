@@ -67,6 +67,13 @@ def display_name(
     return fallback
 
 
+def topic_name(topic_id: int, title: str | None) -> str:
+    """Title of a forum topic; General (id 1) has no creation message to take one from."""
+    if title:
+        return title
+    return "General" if topic_id == 1 else f"topic #{topic_id}"
+
+
 def group_albums(rows: list[dict]) -> list[list[dict]]:
     """Group consecutive rows sharing a non-null grouped_id (a Telegram album)."""
     albums: list[list[dict]] = []

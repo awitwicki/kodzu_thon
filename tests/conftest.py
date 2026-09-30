@@ -75,4 +75,5 @@ def fake_ctx(fake_settings):
     ctx.message_store = MagicMock()
     ctx.message_store.enqueue = MagicMock()
     ctx.media_fetcher = MagicMock()
+    ctx.topic_tracker = MagicMock()
     return ctx

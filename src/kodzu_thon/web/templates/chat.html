@@ -3,6 +3,16 @@
 {% block content %}
 <h1>{{ chat.title or chat.id }} <span class="badge">{{ chat.type }}</span></h1>
 <p class="muted">{% if chat.username %}@{{ chat.username }} - {% endif %}id {{ chat.id }}</p>
+{% if chat.is_forum %}
+<nav class="topics">
+  <a href="/chats/{{ chat.id }}"{% if not filters.topic_id %} class="current"{% endif %}>All topics</a>
+  {% for t in topics %}
+  <a href="/chats/{{ chat.id }}?topic={{ t.id }}"{% if filters.topic_id == t.id %} class="current"{% endif %}>{{ topic_name(t.id, t.title) }}{% if t.closed %} (closed){% endif %} <span class="muted">{{ t.message_count }}</span></a>
+  {% endfor %}
+</nav>
+{% if filters.topic_id %}<h2>{{ topic_name(filters.topic_id, topic.title if topic else none) }}</h2>{% endif %}
+{% endif %}
+{% set show_topic = chat.is_forum and not filters.topic_id %}
 {% include "filters.html" %}
 {% if not albums %}<p class="muted">No messages match.</p>{% endif %}
 {% for album in albums %}{% include "message_item.html" %}{% endfor %}

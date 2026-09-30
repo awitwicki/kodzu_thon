@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% block title %}Message {{ message.id }} - kodzuthon{% endblock %}
 {% block content %}
-<p class="muted"><a href="/chats/{{ message.chat_id }}">{{ message.chat_title or message.chat_id }}</a> - message {{ message.id }}</p>
+<p class="muted"><a href="/chats/{{ message.chat_id }}">{{ message.chat_title or message.chat_id }}</a>
+  {%- if message.topic_id %} &rsaquo; <a href="/chats/{{ message.chat_id }}?topic={{ message.topic_id }}">{{ topic_name(message.topic_id, message.topic_title) }}</a>{% endif %} - message {{ message.id }}</p>
 {% include "message_item.html" %}
 {% if edits %}
 <details class="history" open>

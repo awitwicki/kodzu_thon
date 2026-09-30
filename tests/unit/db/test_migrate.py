@@ -84,6 +84,9 @@ def test_bundled_migrations_match_schema_version():
         assert f"CREATE TABLE {table} (" in sql
     assert "CREATE TABLE schema_migrations" not in sql  # owned by the runner
     assert "TO kodzuweb_ro" in sql
+    topics = (MIGRATIONS_DIR / "0002_forum_topics.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE forum_topics (" in topics
+    assert "GRANT SELECT ON forum_topics TO kodzuweb_ro" in topics
 
 
 def _fake_connect(conn):

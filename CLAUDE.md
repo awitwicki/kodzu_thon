@@ -71,6 +71,11 @@ skipped via each handler module's `COMMAND_PATTERNS`). Flow:
   (`db/migrate.py: apply_migrations`). Bump `db/__init__.py: SCHEMA_VERSION` when adding
   a file. Both run automatically on every `MessageStore` connect — no manual SQL required
   for a plain `DATABASE_URL` pointed at a role with `CREATEDB` (e.g. `postgres`).
+- Forum topics: `messages.topic_id` (General = 1, NULL outside forums; derived from
+  `reply_to.forum_topic` in `message_extract.topic_id_of`) and `chats.is_forum`. Topic
+  titles live in `forum_topics`, kept current by `services/forum_topics.py: TopicTracker`
+  (fetches all topics on the first message from a forum chat per process, then new ones;
+  topic create/edit service messages arrive via an `events.Raw` handler in the recorder).
 - Chat ids are Telethon marked ids. Deletions in basic groups arrive without a chat id and
   are matched by message id across chats of type `group`.
 - If PostgreSQL is down the queue buffers (10 000 events, 256 MiB of blobs) and the bot

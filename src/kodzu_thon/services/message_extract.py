@@ -22,6 +22,7 @@ class ChatSnapshot:
     title: str | None
     username: str | None
     photo_id: int | None
+    is_forum: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,16 @@ class MessageRecord:
     media_size: int | None
     media_meta: dict[str, Any] | None
     raw: dict[str, Any]
+    topic_id: int | None = None  # forum topic; None outside forums
+
+
+@dataclass(frozen=True)
+class TopicRecord:
+    chat_id: int
+    id: int
+    title: str
+    icon_emoji_id: int | None
+    closed: bool
 
 
 @dataclass(frozen=True)
@@ -121,6 +132,35 @@ def chat_snapshot(entity: Any) -> ChatSnapshot:
         title=entity.title,
         username=getattr(entity, "username", None),
         photo_id=_photo_id(entity.photo),
+        is_forum=bool(getattr(entity, "forum", False)),
+    )
+
+
+GENERAL_TOPIC_ID = 1
+
+
+def topic_id_of(message: Any, chat: Any) -> int | None:
+    """The forum topic a message belongs to. Messages outside General carry
+    reply_to.forum_topic with the topic's root message id in reply_to_top_id (when the
+    message is also a reply to something else) or reply_to_msg_id (when it isn't)."""
+    if not getattr(chat, "forum", False):
+        return None
+    reply = message.reply_to
+    if isinstance(reply, types.MessageReplyHeader) and reply.forum_topic:
+        return reply.reply_to_top_id or reply.reply_to_msg_id or GENERAL_TOPIC_ID
+    return GENERAL_TOPIC_ID
+
+
+def topic_record(chat_id: int, topic: Any) -> TopicRecord | None:
+    """TopicRecord from a ForumTopic; None for ForumTopicDeleted."""
+    if not isinstance(topic, types.ForumTopic):
+        return None
+    return TopicRecord(
+        chat_id=chat_id,
+        id=topic.id,
+        title=topic.title,
+        icon_emoji_id=topic.icon_emoji_id,
+        closed=bool(topic.closed),
     )
 
 
@@ -228,6 +268,7 @@ def extract_message(message: Any, chat: Any, sender: Any, *, max_media_bytes: in
         media_size=media_size,
         media_meta=media_meta,
         raw=json.loads(message.to_json()),
+        topic_id=topic_id_of(message, chat),
     )
 
 

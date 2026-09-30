@@ -12,7 +12,9 @@
       {% else %}
       <span class="name">unknown</span>
       {% endif %}
-      {% if show_chat %}<span class="muted">in <a href="/chats/{{ m.chat_id }}">{{ m.chat_title or m.chat_id }}</a></span>{% endif %}
+      {% if show_chat %}<span class="muted">in <a href="/chats/{{ m.chat_id }}">{{ m.chat_title or m.chat_id }}</a>
+        {%- if m.topic_id %} &rsaquo; <a href="/chats/{{ m.chat_id }}?topic={{ m.topic_id }}">{{ topic_name(m.topic_id, m.topic_title) }}</a>{% endif %}</span>
+      {% elif show_topic and m.topic_id %}<a class="badge topic" href="/chats/{{ m.chat_id }}?topic={{ m.topic_id }}">{{ topic_name(m.topic_id, m.topic_title) }}</a>{% endif %}
       <a class="muted" href="/chats/{{ m.chat_id }}/messages/{{ m.id }}">{{ m.sent_at | localtime }}</a>
       {% if m.is_outgoing %}<span class="badge">me</span>{% endif %}
       {% if m.edit_count %}<a class="badge edited" href="/chats/{{ m.chat_id }}/messages/{{ m.id }}">edited ({{ m.edit_count }})</a>{% endif %}
@@ -26,7 +28,8 @@
       {% if m.fwd_date %}<span class="muted">({{ m.fwd_date | localtime }})</span>{% endif %}
     </div>
     {% endif %}
-    {% if m.reply_to_msg_id %}
+    {# In a forum topic a message that replies to nothing still points at the topic root. #}
+    {% if m.reply_to_msg_id and m.reply_to_msg_id != m.topic_id %}
     <div class="reply">
       <a href="/chats/{{ m.chat_id }}/messages/{{ m.reply_to_msg_id }}">reply to
         {%- if m.reply_first_name or m.reply_last_name %} {{ display_name(m.reply_first_name, m.reply_last_name, none) }}

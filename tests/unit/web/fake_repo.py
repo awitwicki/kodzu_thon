@@ -34,6 +34,8 @@ def make_message_row(**overrides: Any) -> dict:
         "deleted_at": None,
         "chat_title": "Grp",
         "chat_type": "supergroup",
+        "topic_id": None,
+        "topic_title": None,
         "sender_first_name": "Ann",
         "sender_last_name": "Lee",
         "sender_username": "ann",
@@ -62,6 +64,7 @@ class FakeRepository:
         self.edits: dict[tuple[int, int], list[dict]] = {}
         self.blobs: dict[int, dict] = {}
         self.name_history: dict[int, list[dict]] = {}
+        self.topics: dict[tuple[int, int], dict] = {}
         self.sessions: dict[bytes, dict] = {}
         self.attempts: list[dict] = []
         self.totp_counter: int | None = None
@@ -81,6 +84,7 @@ class FakeRepository:
             "photo_blob_id": None,
             "first_seen_at": NOW,
             "last_message_at": NOW,
+            "is_forum": False,
         }
         chat.update(fields)
         self.chats[chat["id"]] = chat
@@ -114,8 +118,17 @@ class FakeRepository:
             row["sender_username"] = user["username"]
             row["sender_photo_blob_id"] = user["photo_blob_id"]
             row["sender_is_bot"] = user["is_bot"]
+        topic = self.topics.get((row["chat_id"], row["topic_id"]))
+        if topic is not None:
+            row["topic_title"] = topic["title"]
         self.messages.append(row)
         return row
+
+    def add_topic(self, chat_id: int, topic_id: int, **fields: Any) -> dict:
+        topic = {"title": f"T{topic_id}", "closed": False}
+        topic.update(fields)
+        self.topics[(chat_id, topic_id)] = topic
+        return topic
 
     def add_edit(self, chat_id: int, message_id: int, **fields: Any) -> dict:
         edit = {
@@ -165,6 +178,8 @@ class FakeRepository:
             rows = [r for r in rows if r["sent_at"] < f.until]
         if f.chat_kind is not None:
             rows = [r for r in rows if r["chat_type"] in CHAT_KINDS[f.chat_kind]]
+        if f.topic_id is not None:
+            rows = [r for r in rows if r["topic_id"] == f.topic_id]
         if f.hide_bots:
             rows = [r for r in rows if not r["sender_is_bot"]]
         return rows
@@ -208,6 +223,24 @@ class FakeRepository:
     async def get_chat(self, chat_id: int) -> dict | None:
         self._record("get_chat", chat_id=chat_id)
         return self._copy(self.chats.get(chat_id))
+
+    async def chat_topics(self, chat_id: int) -> list[dict]:
+        self._record("chat_topics", chat_id=chat_id)
+        stats: dict[int, dict] = {}
+        for r in self.messages:
+            if r["chat_id"] != chat_id or r["topic_id"] is None:
+                continue
+            s = stats.setdefault(r["topic_id"], {"message_count": 0, "last_message_at": r["sent_at"]})
+            s["message_count"] += 1
+            s["last_message_at"] = max(s["last_message_at"], r["sent_at"])
+        result = []
+        for tid, s in stats.items():
+            topic = self.topics.get((chat_id, tid), {})
+            result.append(
+                {"id": tid, "title": topic.get("title"), "closed": topic.get("closed", False), **s}
+            )
+        result.sort(key=lambda t: (-t["last_message_at"].timestamp(), t["id"]))
+        return result
 
     async def chat_messages(
         self,
