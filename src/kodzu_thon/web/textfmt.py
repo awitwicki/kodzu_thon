@@ -35,24 +35,53 @@ def format_text(text: str | None) -> Markup:
     return nl2br(linkify(text or ""))
 
 
-_TOKEN_RE = re.compile(r"\s+|\w+|[^\w\s]", re.UNICODE)
+_TOKEN_RE = re.compile(r"\n|[^\S\n]+|\w+|[^\w\s]", re.UNICODE)
 
 
-def word_diff(old: str | None, new: str | None) -> Markup:
-    """Inline word-level diff, git `--word-diff` style: removed tokens in <del>,
-    added ones in <ins>. Every token is escaped before it is wrapped."""
-    a = _TOKEN_RE.findall(old or "")
-    b = _TOKEN_RE.findall(new or "")
-    out: list[str] = []
+def _marked_lines(tokens: list[tuple[str, bool]], tag: str) -> list[str]:
+    """Join (token, changed) pairs into escaped lines, wrapping changed tokens in `tag`.
+    Newlines are tokens of their own, so a tag never spans two lines."""
+    lines = [""]
+    for token, changed in tokens:
+        if token == "\n":
+            lines.append("")
+        elif changed:
+            lines[-1] += f"<{tag}>{escape(token)}</{tag}>"
+        else:
+            lines[-1] += str(escape(token))
+    return lines
+
+
+def _diff_row(sign: str, cls: str, line: str) -> str:
+    return f'<div class="dl {cls}"><span class="sign">{sign}</span><span>{line}</span></div>'
+
+
+def git_diff(old: str | None, new: str | None) -> Markup:
+    """Line diff in git style: removed lines `-`, added lines `+`, unchanged lines as
+    context; inside a changed block the words that differ are wrapped in <del>/<ins>.
+    Every token is escaped before it is wrapped."""
+    a = (old or "").split("\n") if old else []
+    b = (new or "").split("\n") if new else []
+    rows: list[str] = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if op == "equal":
-            out.append(str(escape("".join(a[i1:i2]))))
+            rows += [_diff_row("&nbsp;", "ctx", str(escape(line))) for line in a[i1:i2]]
             continue
+        ta = _TOKEN_RE.findall("\n".join(a[i1:i2]))
+        tb = _TOKEN_RE.findall("\n".join(b[j1:j2]))
+        old_side: list[tuple[str, bool]] = []
+        new_side: list[tuple[str, bool]] = []
+        words = difflib.SequenceMatcher(None, ta, tb, autojunk=False).get_opcodes()
+        for wop, k1, k2, l1, l2 in words:
+            # A pure insert/delete block is highlighted by its row colour alone.
+            changed = wop != "equal" and op == "replace"
+            old_side += [(t, changed) for t in ta[k1:k2]]
+            new_side += [(t, changed) for t in tb[l1:l2]]
         if i2 > i1:
-            out.append(f"<del>{escape(''.join(a[i1:i2]))}</del>")
+            rows += [_diff_row("-", "del", ln) for ln in _marked_lines(old_side, "del")]
         if j2 > j1:
-            out.append(f"<ins>{escape(''.join(b[j1:j2]))}</ins>")
-    return nl2br(Markup("".join(out)))
+            rows += [_diff_row("+", "add", ln) for ln in _marked_lines(new_side, "ins")]
+    return Markup(f'<div class="gitdiff">{"".join(rows)}</div>')
 
 
 def escape_like(q: str) -> str:

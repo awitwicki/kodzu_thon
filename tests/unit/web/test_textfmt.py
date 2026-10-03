@@ -6,12 +6,12 @@ from kodzu_thon.web.textfmt import (
     display_name,
     escape_like,
     format_text,
+    git_diff,
     group_albums,
     human_size,
     linkify,
     local_time,
     nl2br,
-    word_diff,
 )
 
 
@@ -81,12 +81,25 @@ def test_group_albums_groups_consecutive_grouped_ids():
     assert group_albums([]) == []
 
 
-def test_word_diff_marks_removed_and_added_words_and_escapes():
-    out = word_diff("hello <b> world", "hello <i> world\nbye")
+def test_git_diff_marks_changed_lines_and_words_and_escapes():
+    out = git_diff("hello <b> world\nsame", "hello <i> world\nsame\nbye")
     assert isinstance(out, Markup)
-    assert str(out) == ("hello &lt;<del>b</del><ins>i</ins>&gt; world<ins><br>\nbye</ins>")
+    html = str(out)
+    assert html.startswith('<div class="gitdiff">')
+    assert (
+        '<div class="dl del"><span class="sign">-</span>'
+        "<span>hello &lt;<del>b</del>&gt; world</span></div>"
+    ) in html
+    assert (
+        '<div class="dl add"><span class="sign">+</span>'
+        "<span>hello &lt;<ins>i</ins>&gt; world</span></div>"
+    ) in html
+    assert '<div class="dl ctx"><span class="sign">&nbsp;</span><span>same</span></div>' in html
+    assert '<span class="sign">+</span><span>bye</span>' in html  # pure insert: no <ins>
+    assert html.index("dl del") < html.index("dl add") < html.index("dl ctx")
 
 
-def test_word_diff_handles_missing_text():
-    assert str(word_diff(None, "new")) == "<ins>new</ins>"
-    assert str(word_diff("old", None)) == "<del>old</del>"
+def test_git_diff_handles_missing_text():
+    assert '<span class="sign">+</span><span>new</span>' in str(git_diff(None, "new"))
+    assert '<span class="sign">-</span><span>old</span>' in str(git_diff("old", None))
+    assert "dl add" not in str(git_diff("old", None))

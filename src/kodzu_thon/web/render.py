@@ -10,10 +10,10 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from kodzu_thon.web.textfmt import (
     display_name,
     format_text,
+    git_diff,
     human_size,
     local_time,
     topic_name,
-    word_diff,
 )
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -28,7 +28,7 @@ def build_env(timezone: str) -> Environment:
         lstrip_blocks=True,
     )
     env.filters["fmt_text"] = format_text
-    env.globals["word_diff"] = word_diff
+    env.globals["git_diff"] = git_diff
     env.filters["localtime"] = lambda value: local_time(value, timezone)
     env.filters["human_size"] = human_size
     env.globals["display_name"] = display_name

@@ -17,7 +17,7 @@
     {% if view == 'diff' %}
     {% set newer = edits[loop.index].old_text if not loop.last else message.text %}
     <div class="muted">{{ e.edited_at | localtime }}</div>
-    {% if e.old_text or newer %}<div class="text diff">{{ word_diff(e.old_text, newer) }}</div>{% else %}<div class="muted">(no text)</div>{% endif %}
+    {% if e.old_text or newer %}{{ git_diff(e.old_text, newer) }}{% else %}<div class="muted">(no text)</div>{% endif %}
     {% else %}
     <div class="muted">until {{ e.edited_at | localtime }}</div>
     {% if e.old_text %}<div class="text">{{ e.old_text | fmt_text }}</div>{% else %}<div class="muted">(no text)</div>{% endif %}
