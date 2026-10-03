@@ -56,6 +56,10 @@ button[type=submit] { background: var(--accent); color: #fff; border-color: var(
 details.history { margin-top: 6px; }
 details.history summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .version { border-left: 3px solid var(--warn); padding-left: 8px; margin: 6px 0; }
+.view-switch { font-size: 13px; margin: 6px 0; }
+.view-switch .current { font-weight: 600; }
+.diff del { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+.diff ins { background: #dcfce7; color: #166534; text-decoration: none; }
 pre { background: var(--note); padding: 10px; overflow-x: auto; border-radius: 6px; font-size: 12px; }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }

@@ -84,6 +84,24 @@ async def test_deleted_messages_keyset_on_deleted_at():
     assert args == (NOW, 9, 6)
 
 
+async def test_feed_query_picks_page_keys_before_joining_display_columns():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).deleted_messages(
+        filters=MessageFilters(chat_kind="channels", hide_bots=True)
+    )
+    sql, args = conn.calls[-1]
+    page, outer = sql.split(") SELECT ", 1)
+    assert page.startswith("WITH page AS MATERIALIZED (SELECT m.chat_id, m.id FROM messages m")
+    assert "c.type = ANY($1::text[])" in page and "u.is_bot IS NOT TRUE" in page
+    assert "LIMIT $2" in page and "LEFT JOIN messages r" not in page
+    assert "LEFT JOIN messages r" in outer
+    assert outer.endswith(
+        "JOIN page p ON p.chat_id = m.chat_id AND p.id = m.id "
+        "ORDER BY m.deleted_at DESC, m.id DESC"
+    )
+    assert args == (["channel"], 101)
+
+
 def test_feed_query_falls_back_to_true_when_no_clauses_apply():
     """No caller hits this today (search_messages requires filters.q, and the other feed
     callers always pass a non-empty base_clauses), but _feed_query must not degrade to the

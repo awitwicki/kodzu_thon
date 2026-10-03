@@ -11,6 +11,7 @@ from kodzu_thon.web.textfmt import (
     linkify,
     local_time,
     nl2br,
+    word_diff,
 )
 
 
@@ -78,3 +79,14 @@ def test_group_albums_groups_consecutive_grouped_ids():
     ]
     assert [[r["id"] for r in album] for album in group_albums(rows)] == [[5], [4, 3], [2], [1]]
     assert group_albums([]) == []
+
+
+def test_word_diff_marks_removed_and_added_words_and_escapes():
+    out = word_diff("hello <b> world", "hello <i> world\nbye")
+    assert isinstance(out, Markup)
+    assert str(out) == ("hello &lt;<del>b</del><ins>i</ins>&gt; world<ins><br>\nbye</ins>")
+
+
+def test_word_diff_handles_missing_text():
+    assert str(word_diff(None, "new")) == "<ins>new</ins>"
+    assert str(word_diff("old", None)) == "<del>old</del>"

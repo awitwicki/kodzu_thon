@@ -1,5 +1,6 @@
 """Pure text/formatting helpers for templates. No I/O, no Jinja dependency."""
 
+import difflib
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -32,6 +33,26 @@ def nl2br(markup: Markup | str) -> Markup:
 
 def format_text(text: str | None) -> Markup:
     return nl2br(linkify(text or ""))
+
+
+_TOKEN_RE = re.compile(r"\s+|\w+|[^\w\s]", re.UNICODE)
+
+
+def word_diff(old: str | None, new: str | None) -> Markup:
+    """Inline word-level diff, git `--word-diff` style: removed tokens in <del>,
+    added ones in <ins>. Every token is escaped before it is wrapped."""
+    a = _TOKEN_RE.findall(old or "")
+    b = _TOKEN_RE.findall(new or "")
+    out: list[str] = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == "equal":
+            out.append(str(escape("".join(a[i1:i2]))))
+            continue
+        if i2 > i1:
+            out.append(f"<del>{escape(''.join(a[i1:i2]))}</del>")
+        if j2 > j1:
+            out.append(f"<ins>{escape(''.join(b[j1:j2]))}</ins>")
+    return nl2br(Markup("".join(out)))
 
 
 def escape_like(q: str) -> str:

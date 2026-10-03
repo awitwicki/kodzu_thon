@@ -194,7 +194,20 @@ def _feed_query(
     params.append(limit + 1)
     where = " AND ".join(clauses)
     order = f"{keyset_columns[0]} DESC, {keyset_columns[1]} DESC"
-    return f"{MESSAGE_SELECT} WHERE {where} ORDER BY {order} LIMIT ${len(params)}", params
+    # Two phases: pick the page's keys joining only what the filters need, then join the
+    # display columns onto those few rows. With one flat query, selective filters
+    # (hide_bots, chat_kind) made the planner join every candidate row against the
+    # reply/forward/sender tables before sorting, which blew the statement timeout.
+    page = (
+        "SELECT m.chat_id, m.id FROM messages m JOIN chats c ON c.id = m.chat_id "
+        f"LEFT JOIN users u ON u.id = m.sender_user_id WHERE {where} "
+        f"ORDER BY {order} LIMIT ${len(params)}"
+    )
+    sql = (
+        f"WITH page AS MATERIALIZED ({page}) {MESSAGE_SELECT} "
+        f"JOIN page p ON p.chat_id = m.chat_id AND p.id = m.id ORDER BY {order}"
+    )
+    return sql, params
 
 
 class Repository:

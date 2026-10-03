@@ -1,9 +1,9 @@
 """Message permalink (with edit history and raw JSON) and the global deleted feed."""
 
 import json
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Path, Request
+from fastapi import APIRouter, HTTPException, Path, Query, Request
 
 from kodzu_thon.web.render import render
 from kodzu_thon.web.routes.common import (
@@ -27,6 +27,7 @@ async def message_permalink(
     repo: RepoDep,
     chat_id: Annotated[int, Path()],
     message_id: Annotated[int, Path(ge=1)],
+    view: Annotated[Literal["text", "diff"], Query()] = "text",
 ):
     message = await repo.get_message(chat_id, message_id)
     if message is None:
@@ -42,6 +43,7 @@ async def message_permalink(
         message=message,
         album=[message],
         edits=edits,
+        view=view,
         raw_json=raw_json,
     )
 

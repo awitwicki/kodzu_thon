@@ -56,6 +56,18 @@ async def test_permalink_shows_history_and_raw(authed_client, fake_repo):
     assert "until 2026-09-13 13:30" in body
     assert "Raw message JSON" in body and "<pre>{}</pre>" in body
     assert 'href="/chats/-100">Grp</a>' in body
+    assert 'href="/chats/-100/messages/1?view=diff">as changes</a>' in body
+    assert "<del>" not in body
+
+
+async def test_permalink_diff_view_shows_changes_against_next_version(authed_client, fake_repo):
+    seed(fake_repo)
+    r = await authed_client.get("/chats/-100/messages/1?view=diff")
+    assert r.status_code == 200
+    body = r.text
+    assert "<del>draft</del><ins>first</ins> &lt;<del>i</del><ins>b</ins>&gt;" in body
+    assert 'href="/chats/-100/messages/1">as text</a>' in body
+    assert (await authed_client.get("/chats/-100/messages/1?view=bogus")).status_code == 422
 
 
 async def test_user_profile(authed_client, fake_repo):
