@@ -92,14 +92,21 @@ async def test_feed_query_picks_page_keys_before_joining_display_columns():
     sql, args = conn.calls[-1]
     page, outer = sql.split(") SELECT ", 1)
     assert page.startswith("WITH page AS MATERIALIZED (SELECT m.chat_id, m.id FROM messages m")
+    assert "JOIN chats c ON c.id = m.chat_id" in page and "LEFT JOIN users u" in page
     assert "c.type = ANY($1::text[])" in page and "u.is_bot IS NOT TRUE" in page
     assert "LIMIT $2" in page and "LEFT JOIN messages r" not in page
+    # page drives the display joins: it must be first in FROM (join_collapse_limit)
+    assert "FROM page p JOIN messages m ON m.chat_id = p.chat_id AND m.id = p.id" in outer
     assert "LEFT JOIN messages r" in outer
-    assert outer.endswith(
-        "JOIN page p ON p.chat_id = m.chat_id AND p.id = m.id "
-        "ORDER BY m.deleted_at DESC, m.id DESC"
-    )
+    assert outer.endswith("ORDER BY m.deleted_at DESC, m.id DESC")
     assert args == (["channel"], 101)
+
+
+async def test_feed_page_query_skips_joins_no_filter_needs():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).deleted_messages()
+    page = conn.calls[-1][0].split(") SELECT ", 1)[0]
+    assert "FROM messages m WHERE m.deleted_at IS NOT NULL ORDER BY" in page
 
 
 def test_feed_query_falls_back_to_true_when_no_clauses_apply():

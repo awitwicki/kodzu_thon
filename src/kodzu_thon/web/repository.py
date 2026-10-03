@@ -34,7 +34,7 @@ CHAT_KINDS: dict[str, tuple[str, ...]] = {
 }
 
 
-MESSAGE_SELECT = """
+MESSAGE_COLUMNS = """
 SELECT m.chat_id, m.id, m.sender_user_id, m.sender_chat_id, m.is_outgoing, m.sent_at, m.text,
        m.reply_to_msg_id, m.grouped_id, m.fwd_from_user_id, m.fwd_from_chat_id, m.fwd_from_name,
        m.fwd_date, m.media_type, m.media_size, m.media_meta, m.media_blob_id, m.edited_at,
@@ -47,7 +47,9 @@ SELECT m.chat_id, m.id, m.sender_user_id, m.sender_chat_id, m.is_outgoing, m.sen
        r.text AS reply_text, ru.first_name AS reply_first_name, ru.last_name AS reply_last_name,
        rsc.title AS reply_chat_title,
        fu.first_name AS fwd_first_name, fu.last_name AS fwd_last_name, fc.title AS fwd_chat_title
-FROM messages m
+""".strip()
+
+MESSAGE_JOINS = """
 JOIN chats c ON c.id = m.chat_id
 LEFT JOIN forum_topics ft ON ft.chat_id = m.chat_id AND ft.id = m.topic_id
 LEFT JOIN users u ON u.id = m.sender_user_id
@@ -58,6 +60,8 @@ LEFT JOIN chats rsc ON rsc.id = r.sender_chat_id
 LEFT JOIN users fu ON fu.id = m.fwd_from_user_id
 LEFT JOIN chats fc ON fc.id = m.fwd_from_chat_id
 """.strip()
+
+MESSAGE_SELECT = f"{MESSAGE_COLUMNS}\nFROM messages m\n{MESSAGE_JOINS}"
 
 MESSAGE_SELECT_WITH_RAW = MESSAGE_SELECT.replace(
     "m.edit_count, m.deleted_at,", "m.edit_count, m.deleted_at, m.raw,", 1
@@ -195,17 +199,22 @@ def _feed_query(
     where = " AND ".join(clauses)
     order = f"{keyset_columns[0]} DESC, {keyset_columns[1]} DESC"
     # Two phases: pick the page's keys joining only what the filters need, then join the
-    # display columns onto those few rows. With one flat query, selective filters
-    # (hide_bots, chat_kind) made the planner join every candidate row against the
-    # reply/forward/sender tables before sorting, which blew the statement timeout.
+    # display columns onto those few rows. The display query has more relations than
+    # Postgres' join_collapse_limit (8), so the planner keeps the written join order:
+    # `page` must come first or it joins the whole messages table before narrowing.
+    page_joins = ""
+    if filters.chat_kind is not None:
+        page_joins += " JOIN chats c ON c.id = m.chat_id"
+    if filters.hide_bots:
+        page_joins += " LEFT JOIN users u ON u.id = m.sender_user_id"
     page = (
-        "SELECT m.chat_id, m.id FROM messages m JOIN chats c ON c.id = m.chat_id "
-        f"LEFT JOIN users u ON u.id = m.sender_user_id WHERE {where} "
+        f"SELECT m.chat_id, m.id FROM messages m{page_joins} WHERE {where} "
         f"ORDER BY {order} LIMIT ${len(params)}"
     )
     sql = (
-        f"WITH page AS MATERIALIZED ({page}) {MESSAGE_SELECT} "
-        f"JOIN page p ON p.chat_id = m.chat_id AND p.id = m.id ORDER BY {order}"
+        f"WITH page AS MATERIALIZED ({page}) {MESSAGE_COLUMNS} "
+        "FROM page p JOIN messages m ON m.chat_id = p.chat_id AND m.id = p.id "
+        f"{MESSAGE_JOINS} ORDER BY {order}"
     )
     return sql, params
 
