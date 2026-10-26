@@ -149,7 +149,7 @@ async def test_user_messages_and_aggregates():
     sqls = conn.sqls()
     assert "FROM users WHERE id = $1" in sqls[0]
     assert "FROM user_name_history WHERE user_id = $1 ORDER BY seen_at DESC, id DESC" in sqls[1]
-    assert "GROUP BY c.id, c.title, c.type ORDER BY message_count DESC" in sqls[2]
+    assert "WHERE sender_user_id = $1 GROUP BY chat_id" in sqls[2]
     assert "m.sender_user_id = $1" in sqls[3] and "(m.sent_at, m.id) < ($2, $3)" in sqls[3]
     assert conn.calls[-1][1] == (7, NOW, 1, 2)
 

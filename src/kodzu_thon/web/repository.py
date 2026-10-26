@@ -92,9 +92,10 @@ USER_NAME_HISTORY = (
     "FROM user_name_history WHERE user_id = $1 ORDER BY seen_at DESC, id DESC"
 )
 USER_CHATS = (
-    "SELECT c.id, c.title, c.type, count(*) AS message_count "
-    "FROM messages m JOIN chats c ON c.id = m.chat_id WHERE m.sender_user_id = $1 "
-    "GROUP BY c.id, c.title, c.type ORDER BY message_count DESC"
+    "SELECT c.id, c.title, c.type, s.message_count FROM ("
+    "SELECT chat_id, count(*) AS message_count FROM messages WHERE sender_user_id = $1 "
+    "GROUP BY chat_id) s JOIN chats c ON c.id = s.chat_id "
+    "ORDER BY s.message_count DESC, c.id"
 )
 MESSAGE_EDITS = (
     "SELECT id, edited_at, old_text, old_media_blob_id, old_raw "
