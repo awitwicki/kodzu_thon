@@ -10,5 +10,5 @@
 {% elif item.media_type == "document" and item.media_blob_id %}
 <div class="media"><a href="/media/{{ item.media_blob_id }}?filename={{ (meta.get('filename') or '') | urlencode }}">{{ meta.get('filename') or 'document' }}</a> <span class="muted">{{ item.media_size | human_size }}</span></div>
 {% elif item.media_type and item.media_type != "webpage" %}
-<div class="media"><span class="note">{{ item.media_type }}{% if meta.get('skipped') %}: {{ meta.get('skipped') }}{% endif %}{% if item.media_size %} ({{ item.media_size | human_size }}){% endif %}</span></div>
+<div class="media"><span class="note">{{ item.media_type }}{% if meta.get('skipped') %}: {{ meta.get('skipped') }}{% elif meta.get('media_id') %}: not downloaded{% endif %}{% if item.media_size %} ({{ item.media_size | human_size }}){% endif %}</span></div>
 {% endif %}

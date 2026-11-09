@@ -112,6 +112,9 @@ async def test_timeline_media_rendering(authed_client, fake_repo):
         media_meta={"media_id": 5, "skipped": "too_large"},
     )
     fake_repo.add_message(chat_id=-100, id=6, media_type="webpage", media_meta={"media_id": None})
+    fake_repo.add_message(
+        chat_id=-100, id=7, media_type="photo", media_size=115_000, media_meta={"media_id": 7}
+    )
     body = (await authed_client.get("/chats/-100")).text
     assert '<img src="/media/5"' in body
     assert '<video controls preload="metadata" src="/media/6">' in body
@@ -122,9 +125,10 @@ async def test_timeline_media_rendering(authed_client, fake_repo):
         and "2.0 KB" in body
     )
     assert "video: too_large (8.6 MB)" in body
+    assert "photo: not downloaded (112.3 KB)" in body
     # photo renders two links (anchor + img), video/voice/document one each = 5,
-    # plus every message shows sender 7's avatar (blob 43) = 6 more
-    assert body.count("/media/") == 11
+    # plus every message shows sender 7's avatar (blob 43) = 7 more
+    assert body.count("/media/") == 12
 
 
 async def test_albums_are_grouped(authed_client, fake_repo):

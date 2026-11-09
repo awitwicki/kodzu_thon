@@ -1,6 +1,7 @@
 import pytest
+from fastapi import HTTPException
 
-from kodzu_thon.web.routes.media import INLINE_TYPES, safe_filename
+from kodzu_thon.web.routes.media import INLINE_TYPES, parse_range, safe_filename
 
 
 def test_inline_allow_list_is_exactly_the_spec_list():
@@ -74,3 +75,50 @@ async def test_missing_and_invalid_ids(authed_client):
     assert (await authed_client.get("/media/0")).status_code == 422
     assert (await authed_client.get("/media/abc")).status_code == 422
     assert (await authed_client.get("/media/1?filename=" + "a" * 256)).status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        (None, None),
+        ("", None),
+        ("bytes=-", None),
+        ("items=0-1", None),
+        ("bytes=0-1,4-5", None),  # multi-range: serve the whole body
+        ("bytes=0-", (0, 9)),
+        ("bytes=2-4", (2, 4)),
+        ("bytes=2-99", (2, 9)),
+        ("bytes=-3", (7, 9)),
+        ("bytes=-99", (0, 9)),
+    ],
+)
+def test_parse_range(header, expected):
+    assert parse_range(header, 10) == expected
+
+
+@pytest.mark.parametrize("header", ["bytes=10-", "bytes=5-2"])
+def test_parse_range_unsatisfiable(header):
+    with pytest.raises(HTTPException) as exc:
+        parse_range(header, 10)
+    assert exc.value.status_code == 416
+    assert exc.value.headers == {"Content-Range": "bytes */10"}
+
+
+async def test_byte_range_request_gets_partial_content(authed_client, fake_repo):
+    fake_repo.add_blob(id=5, mime_type="audio/ogg", data=b"0123456789")
+    r = await authed_client.get("/media/5")
+    assert r.status_code == 200 and r.headers["accept-ranges"] == "bytes"
+    r = await authed_client.get("/media/5", headers={"Range": "bytes=2-5"})
+    assert r.status_code == 206 and r.content == b"2345"
+    assert r.headers["content-range"] == "bytes 2-5/10"
+    assert r.headers["content-type"] == "audio/ogg"
+    r = await authed_client.get("/media/5", headers={"Range": "bytes=20-"})
+    assert r.status_code == 416 and r.headers["content-range"] == "bytes */10"
+
+
+async def test_byte_range_on_attachment_stays_attachment(authed_client, fake_repo):
+    fake_repo.add_blob(id=6, mime_type="text/html", data=b"<script>1</script>")
+    r = await authed_client.get("/media/6", headers={"Range": "bytes=0-3"})
+    assert r.status_code == 206 and r.content == b"<scr"
+    assert r.headers["content-type"] == "application/octet-stream"
+    assert r.headers["content-disposition"].startswith("attachment;")
