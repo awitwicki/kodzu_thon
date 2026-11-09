@@ -1,5 +1,6 @@
 import asyncio
 import io
+import re
 import sys
 import zlib
 
@@ -14,8 +15,9 @@ from kodzu_thon.services.quote_sticker import (
     render_quote,
 )
 
-HELP = [("!st [reply]", "make a webp sticker from the message (text quote or image)")]
-COMMAND_PATTERNS = ["^!st$"]
+HELP = [("st [reply]", "make a webp sticker from the message (text quote or image)")]
+_ST_PATTERN = re.compile(r"^st$", re.IGNORECASE)
+COMMAND_PATTERNS = [_ST_PATTERN]
 
 
 def _is_image(msg) -> bool:
@@ -70,6 +72,7 @@ async def _sticker_logic(event, client) -> None:
         await event.edit("Can't load the replied message")
         return
 
+    await event.edit("Processing...")
     try:
         webp = await _quote_sticker(client, msg)
     except Exception as e:
@@ -96,6 +99,6 @@ async def _sticker_logic(event, client) -> None:
 
 
 def register(client, ctx) -> None:
-    @client.on(events.NewMessage(pattern="^!st$", outgoing=True))
+    @client.on(events.NewMessage(pattern=_ST_PATTERN, outgoing=True))
     async def _on_sticker(event):
         await _sticker_logic(event, client)

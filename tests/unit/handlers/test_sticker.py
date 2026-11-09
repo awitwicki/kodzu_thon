@@ -30,6 +30,7 @@ async def test_text_message_sends_quote_sticker(fake_event, fake_client, mocker)
 
     await _sticker_logic(fake_event, fake_client)
 
+    assert fake_event.edit.await_args_list[0].args == ("Processing...",)
     quote = render.call_args.args[0]
     assert (quote.name, quote.text, quote.color_seed) == ("Ann B", "hello", 7)
     fake_event.delete.assert_awaited_once()
