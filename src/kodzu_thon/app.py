@@ -120,6 +120,7 @@ async def run_app() -> None:
     client, ctx = build_app()
     await client.start()
     await ctx.message_store.start()
+    ctx.media_fetcher.start_backfill()
     # bio_task = asyncio.create_task(_bio_loop(client, ctx))
 
     stop_event = asyncio.Event()

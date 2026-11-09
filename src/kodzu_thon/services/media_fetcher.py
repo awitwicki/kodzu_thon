@@ -1,11 +1,16 @@
 """Downloads message media and profile photos through the Telethon client and
 hands the bytes to the MessageStore as BlobRecords. Bounded by a semaphore and
-two LRU caches so nothing is fetched twice per process lifetime."""
+two LRU caches so nothing is fetched twice per process lifetime.
+
+Media that was never fetched (store disconnected when the message arrived, pending
+cap hit, blob dropped from a full buffer, process restarted mid-download) is picked
+up by a periodic backfill pass that re-reads the message from Telegram."""
 
 import asyncio
 import hashlib
 import sys
 from collections.abc import Coroutine
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from cachetools import LRUCache
@@ -32,6 +37,12 @@ def _log(msg: str) -> None:
 # until restart" semantics as a failed download).
 MAX_PENDING_TASKS = 200
 
+BACKFILL_INTERVAL = 300.0  # seconds between backfill passes
+BACKFILL_LOOKBACK = timedelta(days=7)
+# Gives the live path (download + writer queue) time to attach the blob first.
+BACKFILL_MIN_AGE = timedelta(minutes=2)
+BACKFILL_BATCH = 100
+
 
 class MediaFetcher:
     def __init__(
@@ -44,6 +55,8 @@ class MediaFetcher:
         self._media_seen: LRUCache = LRUCache(maxsize=cache_size)  # (chat_id, msg_id) -> media_id
         self._photo_seen: LRUCache = LRUCache(maxsize=cache_size)  # (kind, entity_id) -> photo_id
         self._tasks: set[asyncio.Task] = set()
+        self._inflight: set[tuple[int, int]] = set()
+        self._backfill_task: asyncio.Task | None = None
 
     @property
     def pending(self) -> int:
@@ -92,11 +105,57 @@ class MediaFetcher:
                 continue
             self._spawn(self._fetch_profile_photo(kind, entity, entity_id, photo_id))
 
+    def start_backfill(self) -> None:
+        if not self._store.enabled or self._backfill_task is not None:
+            return
+        self._backfill_task = asyncio.create_task(self._backfill_loop(), name="media-backfill")
+
+    async def backfill_once(self, now: datetime | None = None) -> int:
+        """Fetch media the live path missed; returns how many messages were retried."""
+        if not self._store.connected:
+            return 0
+        now = now or datetime.now(UTC)
+        rows = await self._store.missing_message_media(
+            now - BACKFILL_LOOKBACK, now - BACKFILL_MIN_AGE, self._max_bytes, BACKFILL_BATCH
+        )
+        by_chat: dict[int, list[dict]] = {}
+        for row in rows:
+            if (row["chat_id"], row["id"]) not in self._inflight:
+                by_chat.setdefault(row["chat_id"], []).append(row)
+        retried = 0
+        for chat_id, chat_rows in by_chat.items():
+            try:
+                messages = await self._client.get_messages(
+                    chat_id, ids=[r["id"] for r in chat_rows]
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                _log(f"backfill: cannot read messages of chat {chat_id}: {e}")
+                continue
+            for row, message in zip(chat_rows, messages, strict=False):
+                media_id = row["media_id"]
+                if message is None:
+                    # Deleted on Telegram's side before we got the media; stop retrying.
+                    self._store.enqueue(MediaSkipped(chat_id, row["id"], media_id, "unavailable"))
+                    continue
+                if getattr(getattr(message.file, "media", None), "id", None) != media_id:
+                    continue  # media replaced since; the edit path owns the new one
+                await self._fetch_message_media(message, chat_id, row["id"], media_id, row["mime"])
+                retried += 1
+        if retried:
+            _log(f"backfill: fetched media for {retried} message(s)")
+        return retried
+
     async def drain(self) -> None:
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
     async def stop(self) -> None:
+        if self._backfill_task is not None:
+            self._backfill_task.cancel()
+            await asyncio.gather(self._backfill_task, return_exceptions=True)
+            self._backfill_task = None
         for task in list(self._tasks):
             task.cancel()
         await self.drain()
@@ -111,6 +170,16 @@ class MediaFetcher:
             return
         targets[key] = (entity, snap.photo_id)
 
+    async def _backfill_loop(self) -> None:
+        while True:
+            await asyncio.sleep(BACKFILL_INTERVAL)
+            try:
+                await self.backfill_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                _log(f"backfill failed: {e}")
+
     def _spawn(self, coro: Coroutine) -> None:
         task = asyncio.create_task(coro)
         self._tasks.add(task)
@@ -123,6 +192,7 @@ class MediaFetcher:
         if await self._store.message_media_is_current(chat_id, message_id, media_id):
             self._media_seen[key] = media_id
             return
+        self._inflight.add(key)
         try:
             async with self._sem:
                 data = await message.download_media(file=bytes)
@@ -135,6 +205,8 @@ class MediaFetcher:
             self._store.enqueue(MediaSkipped(chat_id, message_id, media_id, "download_failed"))
             self._media_seen[key] = media_id
             return
+        finally:
+            self._inflight.discard(key)
         self._store.enqueue(
             BlobRecord(
                 target=MessageTarget(chat_id, message_id, media_id),

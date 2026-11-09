@@ -4,7 +4,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from kodzu_thon.services.media_fetcher import MAX_PENDING_TASKS, MediaFetcher
+from kodzu_thon.services.media_fetcher import (
+    BACKFILL_BATCH,
+    BACKFILL_INTERVAL,
+    BACKFILL_LOOKBACK,
+    BACKFILL_MIN_AGE,
+    MAX_PENDING_TASKS,
+    MediaFetcher,
+)
 from kodzu_thon.services.message_extract import (
     BlobRecord,
     ChatPhotoTarget,
@@ -271,3 +278,120 @@ async def test_pending_task_cap_blocks_profile_photo_spawn(store, client):
     client.download_profile_photo.assert_not_awaited()
 
     await _cleanup_fillers(fillers)
+
+
+def missing_row(msg_id=1, media_id=1000, chat_id=CHAT.id, mime="image/jpeg"):
+    return {"chat_id": chat_id, "id": msg_id, "media_id": media_id, "mime": mime}
+
+
+def make_live_message(media_id=1000, data=b"abc"):
+    m = make_message(data)
+    m.file.media.id = media_id
+    return m
+
+
+async def test_backfill_queries_window_and_fetches_missing_media(store, client):
+    msg = make_live_message()
+    store.missing_message_media = AsyncMock(return_value=[missing_row()])
+    client.get_messages = AsyncMock(return_value=[msg])
+    fetcher = MediaFetcher(client, store, MAX)
+
+    assert await fetcher.backfill_once(now=NOW) == 1
+
+    store.missing_message_media.assert_awaited_once_with(
+        NOW - BACKFILL_LOOKBACK, NOW - BACKFILL_MIN_AGE, MAX, BACKFILL_BATCH
+    )
+    client.get_messages.assert_awaited_once_with(CHAT.id, ids=[1])
+    blob = store.enqueue.call_args.args[0]
+    assert blob.target == MessageTarget(CHAT.id, 1, 1000) and blob.data == b"abc"
+
+
+async def test_backfill_groups_ids_per_chat(store, client):
+    other = -1000000000999
+    store.missing_message_media = AsyncMock(
+        return_value=[missing_row(1), missing_row(1, chat_id=other), missing_row(2)]
+    )
+    client.get_messages = AsyncMock(
+        side_effect=lambda chat, ids: [make_live_message() for _ in ids]
+    )
+    await MediaFetcher(client, store, MAX).backfill_once(now=NOW)
+    calls = [(c.args[0], c.kwargs["ids"]) for c in client.get_messages.await_args_list]
+    assert calls == [(CHAT.id, [1, 2]), (other, [1])]
+
+
+async def test_backfill_marks_messages_gone_from_telegram(store, client):
+    store.missing_message_media = AsyncMock(return_value=[missing_row()])
+    client.get_messages = AsyncMock(return_value=[None])
+    assert await MediaFetcher(client, store, MAX).backfill_once(now=NOW) == 0
+    store.enqueue.assert_called_once_with(MediaSkipped(CHAT.id, 1, 1000, "unavailable"))
+
+
+async def test_backfill_skips_replaced_media(store, client):
+    msg = make_live_message(media_id=2000)
+    store.missing_message_media = AsyncMock(return_value=[missing_row(media_id=1000)])
+    client.get_messages = AsyncMock(return_value=[msg])
+    assert await MediaFetcher(client, store, MAX).backfill_once(now=NOW) == 0
+    msg.download_media.assert_not_awaited()
+    store.enqueue.assert_not_called()
+
+
+async def test_backfill_survives_unreadable_chat(store, client, capsys):
+    other = -1000000000999
+    store.missing_message_media = AsyncMock(
+        return_value=[missing_row(1, chat_id=other), missing_row(2)]
+    )
+    client.get_messages = AsyncMock(side_effect=[ValueError("no entity"), [make_live_message()]])
+    assert await MediaFetcher(client, store, MAX).backfill_once(now=NOW) == 1
+    assert "cannot read messages of chat" in capsys.readouterr().err
+    store.enqueue.assert_called_once()
+
+
+async def test_backfill_noop_when_disconnected(store, client):
+    store.connected = False
+    store.missing_message_media = AsyncMock()
+    assert await MediaFetcher(client, store, MAX).backfill_once(now=NOW) == 0
+    store.missing_message_media.assert_not_awaited()
+
+
+async def test_backfill_skips_downloads_in_flight(store, client):
+    gate = asyncio.Event()
+    live = make_message()
+
+    async def slow_download(file):
+        await gate.wait()
+        return b"abc"
+
+    live.download_media = AsyncMock(side_effect=slow_download)
+    fetcher = MediaFetcher(client, store, MAX)
+    fetcher.schedule_for_message(live, make_record())
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    store.missing_message_media = AsyncMock(return_value=[missing_row()])
+    client.get_messages = AsyncMock()
+    assert await fetcher.backfill_once(now=NOW) == 0
+    client.get_messages.assert_not_awaited()
+    gate.set()
+    await fetcher.drain()
+
+
+async def test_start_backfill_runs_periodically_and_stop_cancels(store, client, mocker):
+    sleep = mocker.patch(
+        "kodzu_thon.services.media_fetcher.asyncio.sleep",
+        AsyncMock(side_effect=[None, None, asyncio.CancelledError()]),
+    )
+    store.missing_message_media = AsyncMock(side_effect=[RuntimeError("boom"), []])
+    fetcher = MediaFetcher(client, store, MAX)
+    fetcher.start_backfill()
+    fetcher.start_backfill()  # idempotent
+    await asyncio.gather(fetcher._backfill_task, return_exceptions=True)
+    assert store.missing_message_media.await_count == 2
+    sleep.assert_awaited_with(BACKFILL_INTERVAL)
+    await fetcher.stop()
+    assert fetcher._backfill_task is None
+
+
+async def test_start_backfill_disabled_without_store(store, client):
+    store.enabled = False
+    fetcher = MediaFetcher(client, store, MAX)
+    fetcher.start_backfill()
+    assert fetcher._backfill_task is None

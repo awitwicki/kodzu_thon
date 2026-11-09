@@ -64,6 +64,9 @@ skipped via each handler module's `COMMAND_PATTERNS`). Flow:
   `MessageStore.enqueue` (bounded `asyncio.Queue`) → background writer task → asyncpg.
 - `services/media_fetcher.py` downloads media ≤ `RECORD_MEDIA_MAX_BYTES` and profile
   photos and enqueues `BlobRecord`s; blobs are deduplicated by SHA-256 in table `blobs`.
+  Media the live path missed (store disconnected, pending cap, dropped blob, restart) is
+  retried by a 5-minute backfill pass over the last 7 days (`MediaFetcher.backfill_once`);
+  messages Telegram no longer returns are marked `skipped: unavailable`.
 - `db/migrate.py: ensure_database_exists` creates the target database itself if missing
   (connects to the `postgres` maintenance database with the same credentials; needs
   `CREATEDB` only when the database doesn't already exist). Schema lives in

@@ -1,12 +1,14 @@
 import asyncio
 import dataclasses
 import json
+from datetime import timedelta
 from unittest.mock import AsyncMock
 
 import pytest
 
 from kodzu_thon.services import message_store as ms
 from kodzu_thon.services.message_extract import (
+    DOWNLOADABLE_MEDIA_TYPES,
     BlobRecord,
     ChatPhotoTarget,
     ChatSnapshot,
@@ -280,6 +282,21 @@ async def test_read_helpers():
     await store.start()
     await store.stop()
     assert await store.message_media_is_current(CHAT.id, 1, 1000) is False  # pool closed
+
+
+async def test_missing_message_media_query():
+    row = {"chat_id": CHAT.id, "id": 1, "media_id": 1000, "mime": "image/jpeg"}
+    conn = FakeConn(fetch_results=[[row]])
+    store = make_store(conn)
+    since, until = NOW - timedelta(days=7), NOW
+    assert await store.missing_message_media(since, until, 5, 10) == []  # not connected yet
+    store._pool, store._connected = FakePool(conn), True
+    assert await store.missing_message_media(since, until, 5, 10) == [row]
+    assert conn.calls == [
+        (ms.MISSING_MESSAGE_MEDIA, (since, until, sorted(DOWNLOADABLE_MEDIA_TYPES), 5, 10))
+    ]
+    conn.fail_on = lambda sql, args: RuntimeError("boom")
+    assert await store.missing_message_media(since, until, 5, 10) == []
 
 
 async def test_connect_terminates_pool_when_migrations_fail(mocker):

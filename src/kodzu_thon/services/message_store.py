@@ -7,12 +7,14 @@ back to one-by-one application so a single bad event cannot wedge the queue."""
 import asyncio
 import json
 import sys
+from datetime import datetime
 from typing import Any
 
 import asyncpg
 
 from kodzu_thon.db.migrate import apply_migrations, ensure_database_exists
 from kodzu_thon.services.message_extract import (
+    DOWNLOADABLE_MEDIA_TYPES,
     BlobRecord,
     ChatPhotoTarget,
     ChatSnapshot,
@@ -146,6 +148,15 @@ SELECT 1 FROM messages
 WHERE chat_id = $1 AND id = $2 AND (media_meta->>'media_id')::bigint = $3
   AND media_blob_id IS NOT NULL
 """
+MISSING_MESSAGE_MEDIA = """
+SELECT chat_id, id, (media_meta->>'media_id')::bigint AS media_id, media_meta->>'mime' AS mime
+FROM messages
+WHERE sent_at >= $1 AND sent_at < $2 AND media_blob_id IS NULL
+  AND media_type = ANY($3::text[]) AND media_size <= $4
+  AND media_meta->>'media_id' IS NOT NULL AND media_meta->>'skipped' IS NULL
+ORDER BY sent_at DESC
+LIMIT $5
+"""
 PHOTO_IS_CURRENT_USER = (
     "SELECT 1 FROM users WHERE id = $1 AND photo_id = $2 AND photo_blob_id IS NOT NULL"
 )
@@ -260,6 +271,28 @@ class MessageStore:
     async def photo_is_current(self, kind: str, entity_id: int, photo_id: int) -> bool:
         sql = PHOTO_IS_CURRENT_USER if kind == "user" else PHOTO_IS_CURRENT_CHAT
         return await self._exists(sql, entity_id, photo_id)
+
+    async def missing_message_media(
+        self, since: datetime, until: datetime, max_bytes: int, limit: int
+    ) -> list[dict]:
+        """Messages sent in [since, until) whose downloadable media never got a blob
+        and was not marked skipped: the media fetcher's backfill retries these."""
+        if self._pool is None or not self._connected:
+            return []
+        try:
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(
+                    MISSING_MESSAGE_MEDIA,
+                    since,
+                    until,
+                    sorted(DOWNLOADABLE_MEDIA_TYPES),
+                    max_bytes,
+                    limit,
+                )
+        except Exception as e:
+            _log(f"read failed: {e}")
+            return []
+        return [dict(r) for r in rows]
 
     # ---- queue ------------------------------------------------------------
 

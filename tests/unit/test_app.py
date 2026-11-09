@@ -60,6 +60,7 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
 
     client.start.assert_awaited_once()
     fake_ctx.message_store.start.assert_awaited_once()
+    fake_ctx.media_fetcher.start_backfill.assert_called_once_with()
     fake_ctx.media_fetcher.stop.assert_awaited_once()
     fake_ctx.topic_tracker.stop.assert_awaited_once()
     fake_ctx.message_store.stop.assert_awaited_once()
