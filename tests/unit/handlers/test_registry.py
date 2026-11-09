@@ -24,6 +24,7 @@ def test_register_all_collects_compiled_command_patterns(fake_ctx):
         "scan",
         "scans",
         "scraps",
+        "!st",
         "summ",
         "tr",
         "TR",
