@@ -1,6 +1,7 @@
 import io
 
-from PIL import Image, ImageFont
+import pytest
+from PIL import Image, ImageFont, UnidentifiedImageError
 
 from kodzu_thon.services import quote_sticker as qs
 
@@ -51,3 +52,18 @@ def test_render_image_resizes_to_sticker():
     Image.new("RGB", (1000, 300), "blue").save(buf, format="PNG")
     img = _open(qs.render_image(buf.getvalue()))
     assert img.size == (512, 154)
+
+
+def test_render_image_rejects_huge_dimensions_before_decoding(mocker):
+    buf = io.BytesIO()
+    Image.new("RGB", (100, 100)).save(buf, format="PNG")
+    mocker.patch.object(qs, "MAX_IMAGE_PIXELS", 5000)
+    with pytest.raises(qs.ImageTooLarge):
+        qs.render_image(buf.getvalue())
+
+
+def test_render_image_rejects_unlisted_formats():
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10)).save(buf, format="TIFF")
+    with pytest.raises(UnidentifiedImageError):
+        qs.render_image(buf.getvalue())

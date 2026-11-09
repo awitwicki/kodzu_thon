@@ -16,6 +16,9 @@ import matplotlib
 from PIL import Image, ImageDraw, ImageFont
 
 STICKER_SIDE = 512
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
+_IMAGE_FORMATS = ["JPEG", "PNG", "WEBP", "GIF", "BMP"]
 
 _FONT_DIR = os.path.join(matplotlib.get_data_path(), "fonts", "ttf")
 _REGULAR = os.path.join(_FONT_DIR, "DejaVuSans.ttf")
@@ -158,7 +161,15 @@ def render_quote(quote: QuoteInput) -> bytes:
     return _to_webp(_fit_sticker(img))
 
 
+class ImageTooLarge(ValueError):
+    pass
+
+
 def render_image(data: bytes) -> bytes:
-    img = Image.open(io.BytesIO(data))
+    # Header-only open: size is known before any pixel data is decoded.
+    img = Image.open(io.BytesIO(data), formats=_IMAGE_FORMATS)
+    if img.width * img.height > MAX_IMAGE_PIXELS:
+        raise ImageTooLarge(f"image is {img.width}x{img.height}, too large")
+    img.draft("RGB", (STICKER_SIDE, STICKER_SIDE))  # JPEG: decode at reduced scale
     img = img.convert("RGBA")
     return _to_webp(_fit_sticker(img))

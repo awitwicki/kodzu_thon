@@ -53,7 +53,7 @@ async def test_forward_uses_original_author_name(fake_event, fake_client, mocker
 
 
 async def test_photo_message_sends_image_sticker(fake_event, fake_client, mocker):
-    msg = _reply(photo=MagicMock())
+    msg = _reply(photo=MagicMock(), file=MagicMock(size=1000))
     msg.download_media = AsyncMock(return_value=b"jpegbytes")
     fake_event.message.is_reply = True
     fake_event.message.get_reply_message = AsyncMock(return_value=msg)
@@ -73,4 +73,17 @@ async def test_nothing_to_render(fake_event, fake_client):
     await _sticker_logic(fake_event, fake_client)
 
     assert "nothing" in fake_event.edit.await_args.args[0].lower()
+    fake_client.send_file.assert_not_awaited()
+
+
+async def test_oversized_image_is_refused_without_download(fake_event, fake_client):
+    msg = _reply(photo=MagicMock(), file=MagicMock(size=50 * 1024 * 1024))
+    msg.download_media = AsyncMock()
+    fake_event.message.is_reply = True
+    fake_event.message.get_reply_message = AsyncMock(return_value=msg)
+
+    await _sticker_logic(fake_event, fake_client)
+
+    msg.download_media.assert_not_awaited()
+    assert "too large" in fake_event.edit.await_args.args[0]
     fake_client.send_file.assert_not_awaited()

@@ -6,7 +6,13 @@ import zlib
 from telethon import events, types
 from telethon.utils import get_display_name
 
-from kodzu_thon.services.quote_sticker import QuoteInput, render_image, render_quote
+from kodzu_thon.services.quote_sticker import (
+    MAX_IMAGE_BYTES,
+    ImageTooLarge,
+    QuoteInput,
+    render_image,
+    render_quote,
+)
 
 HELP = [("!st [reply]", "make a webp sticker from the message (text quote or image)")]
 COMMAND_PATTERNS = ["^!st$"]
@@ -34,6 +40,9 @@ async def _author(msg):
 
 async def _quote_sticker(client, msg) -> bytes | None:
     if _is_image(msg):
+        size = msg.file.size if msg.file else None
+        if size is None or size > MAX_IMAGE_BYTES:
+            raise ImageTooLarge("image is too large")
         data = await msg.download_media(file=bytes)
         return await asyncio.to_thread(render_image, data) if data else None
 
