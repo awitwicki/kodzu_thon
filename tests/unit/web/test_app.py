@@ -6,7 +6,7 @@ import pytest
 from fastapi import Query
 
 from kodzu_thon.db import SCHEMA_VERSION
-from kodzu_thon.web.app import check_schema, create_app
+from kodzu_thon.web.app import check_schema, create_app, wait_for_schema
 from kodzu_thon.web.security import SessionDep
 from tests.unit.web.fake_repo import FakeRepository
 
@@ -20,6 +20,36 @@ async def test_check_schema_accepts_current_and_rejects_old():
     repo.version = None
     with pytest.raises(RuntimeError):
         await check_schema(repo)
+
+
+async def test_wait_for_schema_waits_for_the_recorder_then_starts(capsys):
+    repo = FakeRepository()
+    repo.version = SCHEMA_VERSION - 1
+    naps = []
+
+    async def sleep(seconds):
+        naps.append(seconds)
+        if len(naps) == 3:
+            repo.version = SCHEMA_VERSION  # the recorder finished migrating
+
+    assert await wait_for_schema(repo, interval=5, sleep=sleep) == SCHEMA_VERSION
+    assert naps == [5, 5, 5]
+    err = capsys.readouterr().err
+    assert err.count("waiting for migrations") == 1  # logged once a minute, not every poll
+    assert f"older than required {SCHEMA_VERSION}" in err and "starting" in err
+
+
+async def test_wait_for_schema_is_silent_when_current_and_gives_up_eventually(capsys):
+    repo = FakeRepository()
+    assert await wait_for_schema(repo) == SCHEMA_VERSION
+    assert capsys.readouterr().err == ""
+    repo.version = None
+
+    async def sleep(seconds):
+        pass
+
+    with pytest.raises(RuntimeError, match="older than required"):
+        await wait_for_schema(repo, timeout=20, interval=5, sleep=sleep)
 
 
 async def test_healthz(client, fake_repo):

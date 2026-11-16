@@ -8,7 +8,7 @@ body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, s
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 main { max-width: 960px; margin: 0 auto; padding: 16px; }
-main:has(> .split) { max-width: 1280px; }
+main:has(> .split), main:has(> .graph) { max-width: 1280px; }
 .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px;
           background: var(--card); border-bottom: 1px solid var(--line); }
 .topbar .brand { font-weight: 700; color: var(--ink); }
@@ -123,3 +123,19 @@ th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line
 .pager { margin: 16px 0; text-align: center; }
 .error { text-align: center; padding: 48px 16px; }
 .error h1 { font-size: 48px; margin: 0; }
+
+.graph { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+         padding: 8px; margin: 12px 0; }
+.graph svg { display: block; width: 100%; height: auto; }
+.graph .link { stroke: var(--accent); stroke-opacity: .22; stroke-linecap: round; }
+.graph .cluster:hover .link { stroke-opacity: .7; }
+.graph .person { fill: var(--warn); stroke: var(--card); stroke-width: 1; }
+.graph a:hover .person, .graph a:focus .person { fill: #fff; }
+.graph .chat circle { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 2; }
+.graph .chat text { fill: var(--ink); font-size: 13px; text-anchor: middle;
+                    paint-order: stroke; stroke: var(--card); stroke-width: 4px; }
+.graph .chat .count { fill: var(--accent); font-size: 12px; font-weight: 600; stroke: none; }
+.graph a:hover circle, .graph a:focus circle { fill: var(--accent); }
+.graph a:hover .count, .graph a:focus .count { fill: #0d1520; }
+.graph a:hover text { text-decoration: none; }
+.pairs td:last-child, .pairs th:last-child { text-align: right; font-variant-numeric: tabular-nums; }

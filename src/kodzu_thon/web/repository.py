@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+import asyncpg
+
 from kodzu_thon.web.textfmt import escape_like
 
 PAGE_SIZE = 100
@@ -97,6 +99,28 @@ CHAT_ACTIVITY = (
     "SELECT 'deleted', (deleted_at AT TIME ZONE $3)::date, count(*) "
     "FROM messages WHERE chat_id = $1 AND deleted_at IS NOT NULL AND deleted_at >= $2 GROUP BY 2"
 )
+# People who wrote in two or more chats, one row per (person, chat). `pairs` is a loose
+# index scan: it hops through the distinct (sender_user_id, chat_id) values of
+# messages_sender_chat_idx one probe at a time, so the cost follows the number of
+# memberships, not the number of messages. Bots and the account owner are left out.
+SHARED_MEMBERS = """
+WITH RECURSIVE pairs AS (
+  (SELECT sender_user_id, chat_id FROM messages WHERE sender_user_id IS NOT NULL
+   ORDER BY sender_user_id, chat_id LIMIT 1)
+  UNION ALL
+  SELECT n.sender_user_id, n.chat_id FROM pairs p CROSS JOIN LATERAL (
+    SELECT sender_user_id, chat_id FROM messages
+    WHERE sender_user_id IS NOT NULL
+      AND (sender_user_id, chat_id) > (p.sender_user_id, p.chat_id)
+    ORDER BY sender_user_id, chat_id LIMIT 1) n
+), shared AS (
+  SELECT sender_user_id FROM pairs GROUP BY sender_user_id HAVING count(*) >= 2
+)
+SELECT p.sender_user_id AS user_id, p.chat_id, u.first_name, u.last_name, u.username
+FROM pairs p JOIN shared s USING (sender_user_id) JOIN users u ON u.id = p.sender_user_id
+WHERE NOT u.is_bot AND NOT u.is_self
+ORDER BY p.sender_user_id, p.chat_id
+""".strip()
 GET_USER = (
     "SELECT id, first_name, last_name, username, is_bot, is_self, photo_blob_id, "
     "first_seen_at, last_seen_at FROM users WHERE id = $1"
@@ -284,7 +308,12 @@ class Repository:
             return False
 
     async def schema_version(self) -> int | None:
-        return await self._fetchval(SCHEMA_VERSION_SQL)
+        """None when no migration has been applied yet (a database the recorder never
+        connected to has no schema_migrations table at all)."""
+        try:
+            return await self._fetchval(SCHEMA_VERSION_SQL)
+        except asyncpg.UndefinedTableError:
+            return None
 
     # ---- chats and messages ---------------------------------------------
 
@@ -399,6 +428,11 @@ class Repository:
 
     async def get_user(self, user_id: int) -> dict | None:
         return await self._fetchrow(GET_USER, user_id)
+
+    async def shared_members(self) -> list[dict]:
+        """One {user_id, chat_id, first_name, last_name, username} per chat a person wrote
+        in, for people (not bots, not the account owner) seen in two or more chats."""
+        return await self._fetch(SHARED_MEMBERS)
 
     async def user_name_history(self, user_id: int) -> list[dict]:
         return await self._fetch(USER_NAME_HISTORY, user_id)

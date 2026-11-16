@@ -337,3 +337,14 @@ async def test_chat_messages_since_floors_the_id_walk():
     assert args == (-100, NOW, NOW, 101)
     await make_repo(conn).chat_messages(-100)
     assert "coalesce(" not in conn.calls[-1][0]
+
+
+async def test_shared_members_query():
+    row = {"user_id": 7, "chat_id": -1, "first_name": "A", "last_name": None, "username": None}
+    conn = FakeConn(fetch_results=[[row]])
+    assert await make_repo(conn).shared_members() == [row]
+    sql, args = conn.calls[-1]
+    assert sql == repo_mod.SHARED_MEMBERS and args == ()
+    # hops between distinct (user, chat) pairs instead of reading every message
+    assert "(sender_user_id, chat_id) > (p.sender_user_id, p.chat_id)" in sql
+    assert "HAVING count(*) >= 2" in sql and "NOT u.is_bot AND NOT u.is_self" in sql

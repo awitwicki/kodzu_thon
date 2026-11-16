@@ -116,8 +116,13 @@ Design spec: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
 - The chat page's activity chart (`web/chart.py`, `templates/activity_chart.html`) is inline
   SVG styled only through CSS classes and presentation attributes, since the CSP forbids
   scripts and inline styles.
-- The web service never migrates; `web/app.py: check_schema` refuses to start on an older
-  schema. Start the recorder first.
+- `/graph` draws chats and the people they share (`web/graph.py`, `templates/graph.html`). A
+  "member" is a user with at least one recorded message in the chat — there are no member
+  lists in the archive. The layout is computed server-side and is deterministic; bots and the
+  account owner are excluded in `repository.SHARED_MEMBERS`.
+- The web service never migrates. On startup `web/app.py: wait_for_schema` polls until the
+  recorder has brought the schema to `SCHEMA_VERSION` (logging why it is waiting), and gives
+  up after 30 minutes; so both containers can be deployed together.
 - CLI: `python -m kodzu_thon.web [serve | hash-password | totp-secret]`.
 
 ### Speech pipeline (`speech/*.py`)

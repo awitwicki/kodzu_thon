@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block title %}Chats and shared members - kodzuthon{% endblock %}
+{% block content %}
+<h1>Chats and shared members</h1>
+{% if not graph.chats %}
+<p class="muted">Nobody has written in more than one recorded chat yet.</p>
+{% else %}
+<p class="muted">{{ graph.people | num }} people wrote in two or more of {{ graph.chats | length }} chats. Each dot is a person, sitting between the chats they share; a chat's number is how many of its members are also elsewhere. Bots and your own account are left out. Hover for names, click a dot or a chat to open it.{% if graph.people_drawn < graph.people %} Showing the {{ graph.people_drawn }} most connected people as dots; the lines and the table count everyone.{% endif %}</p>
+<div class="graph">
+  <svg viewBox="0 0 {{ graph.width }} {{ graph.height }}" role="img" aria-label="Graph of {{ graph.chats | length }} chats linked by {{ graph.people }} shared members">
+    {% for c in graph.clusters %}
+    <g class="cluster">
+      <title>{{ c.label }}</title>
+      {% for l in c.lines %}<line class="link" x1="{{ l.x1 }}" y1="{{ l.y1 }}" x2="{{ l.x2 }}" y2="{{ l.y2 }}" stroke-width="{{ c.width }}"/>{% endfor %}
+    </g>
+    {% endfor %}
+    {% for d in graph.dots %}
+    <a href="/users/{{ d.user_id }}"><circle class="person" cx="{{ d.x }}" cy="{{ d.y }}" r="3.2"><title>{{ d.label }}</title></circle></a>
+    {% endfor %}
+    {% for c in graph.chats %}
+    <a class="chat" href="/chats/{{ c.id }}">
+      <title>{{ c.title }}: {{ c.shared }} members also in other chats</title>
+      <circle cx="{{ c.x }}" cy="{{ c.y }}" r="{{ c.r }}"/>
+      <text class="count" x="{{ c.x }}" y="{{ c.y + 4 }}">{{ c.shared }}</text>
+      <text x="{{ c.x }}" y="{{ c.y + c.r + 15 }}">{{ c.short_title }}</text>
+    </a>
+    {% endfor %}
+  </svg>
+</div>
+<h2>Shared members by pair of chats</h2>
+<table class="pairs">
+  <tr><th>Chat</th><th>Chat</th><th>Shared members</th></tr>
+  {% for p in graph.pairs[:50] %}
+  <tr><td><a href="/chats/{{ p.a }}">{{ p.a_title }}</a></td><td><a href="/chats/{{ p.b }}">{{ p.b_title }}</a></td><td>{{ p.shared | num }}</td></tr>
+  {% endfor %}
+</table>
+{% if graph.pairs | length > 50 %}<p class="muted">Top 50 of {{ graph.pairs | length }} pairs.</p>{% endif %}
+{% endif %}
+{% endblock %}

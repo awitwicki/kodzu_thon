@@ -309,3 +309,38 @@ async def test_chat_timeline_since_window(repo, dsn):
     assert [r["id"] for r in await repo.chat_messages(GROUP_ID, filters=inside)] == [2, 1]
     after = MessageFilters(since=sent + timedelta(days=1))
     assert await repo.chat_messages(GROUP_ID, filters=after) == []
+
+
+async def test_shared_members(repo, dsn):
+    bob = make_user(id=8, first_name="Bob", username="bob")
+    bot = make_user(id=9, first_name="Robo", username="robo_bot", bot=True)
+    other = make_supergroup(id=555, title="Other")
+
+    def in_other(msg_id, sender):
+        msg = make_message(id=msg_id, peer=types.PeerChannel(555))
+        return extract_message(msg, other, sender, max_media_bytes=MAX)
+
+    await write(
+        dsn,
+        rec(1),
+        rec(2),
+        rec(3, sender=bob),
+        rec(4, sender=bot),
+        in_other(1, make_user()),
+        in_other(2, make_user()),
+        in_other(3, bot),
+    )
+    rows = await repo.shared_members()
+    default = make_user()
+    assert len(rows) == 2 and {r["user_id"] for r in rows} == {default.id}
+    assert {r["chat_id"] for r in rows} == {GROUP_ID, -1000000000555}
+    assert rows[0]["first_name"] == default.first_name
+
+
+async def test_schema_version_is_none_before_any_migration(db, dsn):
+    """`db` is a freshly reset database: no schema_migrations table yet."""
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=1)
+    try:
+        assert await Repository(pool).schema_version() is None
+    finally:
+        await pool.close()

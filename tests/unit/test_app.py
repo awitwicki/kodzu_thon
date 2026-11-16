@@ -67,6 +67,25 @@ async def test_run_app_starts_and_stops_recorder(mocker, fake_ctx):
     client.disconnect.assert_awaited_once()
 
 
+async def test_run_app_starts_the_store_before_logging_in_to_telegram(mocker, fake_ctx):
+    """The store applies the database migrations the web viewer waits for; a Telegram login
+    that hangs or fails must not hold those back."""
+    order = []
+    client = MagicMock()
+    client.start = AsyncMock(side_effect=lambda: order.append("telegram"))
+    client.run_until_disconnected = AsyncMock()
+    client.disconnect = AsyncMock()
+    fake_ctx.message_store.start = AsyncMock(side_effect=lambda: order.append("store"))
+    fake_ctx.message_store.stop = AsyncMock()
+    fake_ctx.media_fetcher.stop = AsyncMock()
+    fake_ctx.topic_tracker.stop = AsyncMock()
+    mocker.patch("kodzu_thon.app.build_app", return_value=(client, fake_ctx))
+
+    await run_app()
+
+    assert order == ["store", "telegram"]
+
+
 async def test_shutdown_isolates_exception_in_first_stage(capsys):
     ctx = MagicMock()
     ctx.media_fetcher.stop = AsyncMock(side_effect=RuntimeError("fetcher boom"))

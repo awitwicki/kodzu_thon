@@ -118,8 +118,10 @@ async def _shutdown(ctx: AppContext, client: TelegramClient) -> None:
 
 async def run_app() -> None:
     client, ctx = build_app()
-    await client.start()
+    # The store first: it applies the database migrations (which the web viewer waits for)
+    # and must not depend on the Telegram login below completing.
     await ctx.message_store.start()
+    await client.start()
     ctx.media_fetcher.start_backfill()
     # bio_task = asyncio.create_task(_bio_loop(client, ctx))
 

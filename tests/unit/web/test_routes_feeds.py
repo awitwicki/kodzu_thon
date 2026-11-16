@@ -346,3 +346,30 @@ async def test_search_and_user_pages_default_to_last_30_days(authed_client, fake
     # the deleted/edited feed has no date inputs and is not limited
     await authed_client.get("/changes")
     assert fake_repo.calls[-1][1]["filters"].since is None
+
+
+async def test_graph_page(authed_client, client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_user(id=8, first_name="Bob <i>", last_name=None, username=None)
+    fake_repo.add_user(id=9, first_name="Robo", last_name=None, username="robo_bot", is_bot=True)
+    fake_repo.add_user(id=10, first_name="Me", last_name=None, username=None, is_self=True)
+    for i, user in enumerate((8, 9, 10), start=50):
+        fake_repo.add_message(chat_id=-100, id=i, sender_user_id=user, text="x")
+        fake_repo.add_message(chat_id=-200, id=i + 10, sender_user_id=user, text="x")
+    r = await authed_client.get("/graph")
+    assert r.status_code == 200
+    body = r.text
+    assert '<a href="/graph">Graph</a>' in body
+    assert "2 people wrote in two or more of 2 chats" in body  # Ann and Bob; no bot, no self
+    assert '<a class="chat" href="/chats/-100">' in body and '<a class="chat" href="/chats/-200">' in body
+    assert '<a href="/users/8"><circle class="person"' in body
+    assert "<title>Bob &lt;i&gt;: Grp, Other</title>" in body
+    assert 'href="/users/9"' not in body and 'href="/users/10"' not in body
+    assert '<td><a href="/chats/-200">Other</a></td><td><a href="/chats/-100">Grp</a></td><td>2</td>' in body
+
+
+async def test_graph_page_empty_and_requires_login(authed_client, fake_repo):
+    body = (await authed_client.get("/graph")).text
+    assert "Nobody has written in more than one recorded chat yet." in body and "<svg" not in body
+    authed_client.cookies.clear()
+    assert (await authed_client.get("/graph", follow_redirects=False)).status_code == 303

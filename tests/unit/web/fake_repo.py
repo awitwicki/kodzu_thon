@@ -341,6 +341,30 @@ class FakeRepository:
         )
         return [dict(e) for e in entries]
 
+    async def shared_members(self) -> list[dict]:
+        self._record("shared_members")
+        pairs = sorted(
+            {(r["sender_user_id"], r["chat_id"]) for r in self.messages if r["sender_user_id"]}
+        )
+        chats_of: dict[int, int] = {}
+        for user_id, _ in pairs:
+            chats_of[user_id] = chats_of.get(user_id, 0) + 1
+        result = []
+        for user_id, chat_id in pairs:
+            user = self.users.get(user_id)
+            if chats_of[user_id] < 2 or user is None or user["is_bot"] or user["is_self"]:
+                continue
+            result.append(
+                {
+                    "user_id": user_id,
+                    "chat_id": chat_id,
+                    "first_name": user["first_name"],
+                    "last_name": user["last_name"],
+                    "username": user["username"],
+                }
+            )
+        return result
+
     async def user_chats(self, user_id: int) -> list[dict]:
         self._record("user_chats", user_id=user_id)
         counts: dict[int, int] = {}

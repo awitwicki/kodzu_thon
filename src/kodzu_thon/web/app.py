@@ -1,5 +1,6 @@
 """FastAPI application factory for kodzuthon.web."""
 
+import asyncio
 import sys
 import traceback
 from contextlib import asynccontextmanager
@@ -23,6 +24,9 @@ from kodzu_thon.web.security import (
 )
 
 STATEMENT_TIMEOUT_MS = 10_000
+SCHEMA_WAIT_SECONDS = 30 * 60  # how long startup waits for the recorder's migrations
+SCHEMA_POLL_SECONDS = 5
+SCHEMA_LOG_SECONDS = 60
 _ERROR_MESSAGES = {
     403: "Forbidden",
     404: "Not found",
@@ -41,6 +45,34 @@ async def check_schema(repo) -> int:
     return version
 
 
+async def wait_for_schema(
+    repo,
+    *,
+    timeout: float = SCHEMA_WAIT_SECONDS,
+    interval: float = SCHEMA_POLL_SECONDS,
+    sleep=asyncio.sleep,
+) -> int:
+    """The web service never migrates; the recorder does, when it starts. Both containers
+    come up together on a deploy, and a migration over a large table takes minutes, so
+    instead of exiting (and being restarted in a loop) wait for the recorder to finish,
+    saying so in the log. Gives up with check_schema's error after `timeout` seconds."""
+    waited = 0.0
+    while True:
+        try:
+            version = await check_schema(repo)
+        except RuntimeError as e:
+            if waited >= timeout:
+                raise
+            if waited % SCHEMA_LOG_SECONDS < interval:
+                print(f"web: waiting for migrations: {e}", file=sys.stderr, flush=True)
+            await sleep(interval)
+            waited += interval
+        else:
+            if waited:
+                print(f"web: schema is at version {version}, starting", file=sys.stderr, flush=True)
+            return version
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings: WebSettings = app.state.settings
@@ -54,7 +86,7 @@ async def lifespan(app: FastAPI):
         )
         app.state.repo = Repository(pool)
     try:
-        await check_schema(app.state.repo)
+        await wait_for_schema(app.state.repo)
         yield
     finally:
         if owns_repo and app.state.repo is not None:

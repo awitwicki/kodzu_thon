@@ -1,6 +1,5 @@
 # Only what the Dockerfile COPYs is allowed into the build context.
 *
-!README.md
 !pyproject.toml
 !src/
 !media/
