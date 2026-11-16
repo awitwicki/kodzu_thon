@@ -266,3 +266,11 @@ async def test_chat_topics_query():
     conn = FakeConn(fetch_results=[[{"id": 1, "title": None}]])
     assert await make_repo(conn).chat_topics(-100) == [{"id": 1, "title": None}]
     assert conn.calls[-1] == (repo_mod.CHAT_TOPICS, (-100,))
+
+
+def test_chat_topics_query_is_covered_by_topic_index():
+    # messages_topic_idx is (chat_id, topic_id, id): touching any other messages column
+    # (e.g. sent_at) forces a heap fetch per message and times out on large forums.
+    inner = repo_mod.CHAT_TOPICS.split("FROM (")[1].split(") t ")[0]
+    assert "sent_at" not in inner
+    assert "max(id)" in inner

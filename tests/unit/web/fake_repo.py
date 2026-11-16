@@ -230,16 +230,16 @@ class FakeRepository:
         for r in self.messages:
             if r["chat_id"] != chat_id or r["topic_id"] is None:
                 continue
-            s = stats.setdefault(r["topic_id"], {"message_count": 0, "last_message_at": r["sent_at"]})
+            s = stats.setdefault(r["topic_id"], {"message_count": 0, "last_message_id": r["id"]})
             s["message_count"] += 1
-            s["last_message_at"] = max(s["last_message_at"], r["sent_at"])
+            s["last_message_id"] = max(s["last_message_id"], r["id"])
         result = []
         for tid, s in stats.items():
             topic = self.topics.get((chat_id, tid), {})
             result.append(
                 {"id": tid, "title": topic.get("title"), "closed": topic.get("closed", False), **s}
             )
-        result.sort(key=lambda t: (-t["last_message_at"].timestamp(), t["id"]))
+        result.sort(key=lambda t: (-t["last_message_id"], t["id"]))
         return result
 
     async def chat_messages(

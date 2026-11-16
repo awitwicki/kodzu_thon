@@ -75,13 +75,16 @@ GET_CHAT = (
     "SELECT id, type, title, username, photo_blob_id, first_seen_at, last_message_at, is_forum "
     "FROM chats WHERE id = $1"
 )
+# Topics are ordered by their newest message id (ids grow with time inside a chat), not
+# max(sent_at): everything the aggregate needs is then in messages_topic_idx, so it runs as
+# an index-only scan instead of fetching every message row of the forum from the heap.
 CHAT_TOPICS = (
     "SELECT t.topic_id AS id, ft.title, coalesce(ft.closed, false) AS closed, "
-    "t.message_count, t.last_message_at FROM ("
-    "SELECT topic_id, count(*) AS message_count, max(sent_at) AS last_message_at "
+    "t.message_count, t.last_message_id FROM ("
+    "SELECT topic_id, count(*) AS message_count, max(id) AS last_message_id "
     "FROM messages WHERE chat_id = $1 AND topic_id IS NOT NULL GROUP BY topic_id) t "
     "LEFT JOIN forum_topics ft ON ft.chat_id = $1 AND ft.id = t.topic_id "
-    "ORDER BY t.last_message_at DESC, t.topic_id"
+    "ORDER BY t.last_message_id DESC, t.topic_id"
 )
 GET_USER = (
     "SELECT id, first_name, last_name, username, is_bot, is_self, photo_blob_id, "

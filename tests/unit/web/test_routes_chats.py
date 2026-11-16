@@ -259,7 +259,7 @@ def seed_forum(fake_repo):
         chat_id=-400, id=12, topic_id=5, reply_to_msg_id=11, reply_text="in news", text="re"
     )
     fake_repo.add_message(
-        chat_id=-400, id=13, topic_id=6, text="old", sent_at=NOW - timedelta(days=1)
+        chat_id=-400, id=9, topic_id=6, text="old", sent_at=NOW - timedelta(days=1)
     )
     return fake_repo
 
