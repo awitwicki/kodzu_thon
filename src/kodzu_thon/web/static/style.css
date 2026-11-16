@@ -8,6 +8,7 @@ body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, s
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 main { max-width: 960px; margin: 0 auto; padding: 16px; }
+main:has(> .split) { max-width: 1280px; }
 .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 16px;
           background: var(--card); border-bottom: 1px solid var(--line); }
 .topbar .brand { font-weight: 700; color: var(--ink); }
@@ -45,6 +46,48 @@ button[type=submit] { background: var(--accent); color: #0d1520; border-color: v
 .muted { color: var(--muted); font-size: 13px; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }
 .filters label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.filters label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; }
+.filters .actions { display: flex; gap: 10px; align-items: center; }
+/* Feed pages: messages on the left, filters (and the chat's chart) in a column beside them,
+   so nothing above the first message grows with the number of controls. */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 0 20px;
+         grid-template-areas: "feed filters" "feed chart" "feed ."; align-items: start; }
+.split .feed { grid-area: feed; min-width: 0; }
+.split .feed h1 { margin-top: 0; }
+.side-filters { grid-area: filters; }
+.side-chart { grid-area: chart; }
+.side-filters, .side-chart { background: var(--card); border: 1px solid var(--line);
+                             border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.side-filters .filters { flex-direction: column; align-items: stretch; margin: 0; }
+.side-filters .filters input:not([type=checkbox]), .side-filters .filters select { width: 100%; }
+@media (max-width: 900px) {
+  /* Narrow screens: filters, then messages, and the chart last so it never pushes them down. */
+  .split { grid-template-columns: minmax(0, 1fr); grid-template-areas: "filters" "feed" "chart"; }
+  .side-filters .filters { flex-direction: row; align-items: end; }
+  .side-filters .filters input:not([type=checkbox]), .side-filters .filters select { width: auto; }
+}
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs a { padding: 6px 14px; color: var(--muted); border-bottom: 2px solid transparent;
+          margin-bottom: -1px; text-decoration: none; }
+.tabs a:hover { color: var(--ink); }
+.tabs a.current { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.activity h2 { font-size: 15px; margin: 0 0 6px; }
+.activity p { margin: 4px 0; }
+.activity .totals { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+.activity .totals b { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums;
+                      margin-right: 4px; }
+.activity .totals .sent b { color: var(--accent); }
+.activity .totals .gone b { color: var(--danger); }
+.activity svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
+.activity .slot { fill: transparent; }
+.activity .up-top { stop-color: #9fd0ff; }
+.activity .up-bottom { stop-color: #2f6fb3; }
+.activity .down { fill: var(--danger); opacity: .85; }
+.activity .baseline { stroke: var(--line); stroke-width: 1; }
+.activity .day:hover .slot { fill: var(--note); }
+.activity .day:hover .up { filter: brightness(1.35) drop-shadow(0 0 4px var(--accent)); }
+.activity .day:hover .down { opacity: 1; filter: drop-shadow(0 0 4px var(--danger)); }
+.activity .axis { display: flex; justify-content: space-between; font-size: 12px; }
 .msg { display: flex; gap: 10px; }
 .msg.deleted { border-left: 4px solid var(--danger); }
 .msg .body { flex: 1; min-width: 0; }

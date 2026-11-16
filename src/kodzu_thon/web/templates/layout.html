@@ -12,7 +12,7 @@
   {% if session and session.state == "authed" %}
   <nav>
     <a href="/">Chats</a>
-    <a href="/deleted">Deleted</a>
+    <a href="/changes">Deleted &amp; edited</a>
   </nav>
   <form class="search" method="get" action="/search">
     <input type="search" name="q" maxlength="200" placeholder="Search all messages" value="{{ q or '' }}" required>

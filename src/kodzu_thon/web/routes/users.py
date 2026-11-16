@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException, Path, Request
 
 from kodzu_thon.web.render import render
 from kodzu_thon.web.routes.common import (
-    FiltersDep,
     KeysetDep,
     LimitDep,
+    RecentFiltersDep,
     RepoDep,
     next_page_url,
     paginate,
@@ -25,7 +25,7 @@ async def user_profile(
     session: SessionDep,
     repo: RepoDep,
     user_id: Annotated[int, Path(ge=1)],
-    filters: FiltersDep,
+    filters: RecentFiltersDep,
     limit: LimitDep,
     keyset: KeysetDep,
 ):

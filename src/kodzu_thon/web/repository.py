@@ -27,6 +27,8 @@ class MessageFilters:
     hide_bots: bool = False
 
 
+MAX_BIGINT = 9223372036854775807
+
 # Chat-type groups the deleted feed can be narrowed to ("chats" vs "channels").
 CHAT_KINDS: dict[str, tuple[str, ...]] = {
     "groups": ("group", "supergroup"),
@@ -85,6 +87,15 @@ CHAT_TOPICS = (
     "FROM messages WHERE chat_id = $1 AND topic_id IS NOT NULL GROUP BY topic_id) t "
     "LEFT JOIN forum_topics ft ON ft.chat_id = $1 AND ft.id = t.topic_id "
     "ORDER BY t.last_message_id DESC, t.topic_id"
+)
+# Per-day counts for the chat page's activity chart. Both halves are index-only scans:
+# messages_chat_sent_idx and messages_deleted_by_chat_idx.
+CHAT_ACTIVITY = (
+    "SELECT 'sent' AS kind, (sent_at AT TIME ZONE $3)::date AS day, count(*) AS n "
+    "FROM messages WHERE chat_id = $1 AND sent_at >= $2 GROUP BY 2 "
+    "UNION ALL "
+    "SELECT 'deleted', (deleted_at AT TIME ZONE $3)::date, count(*) "
+    "FROM messages WHERE chat_id = $1 AND deleted_at IS NOT NULL AND deleted_at >= $2 GROUP BY 2"
 )
 GET_USER = (
     "SELECT id, first_name, last_name, username, is_bot, is_self, photo_blob_id, "
@@ -286,6 +297,10 @@ class Repository:
     async def chat_topics(self, chat_id: int) -> list[dict]:
         return await self._fetch(CHAT_TOPICS, chat_id)
 
+    async def chat_activity(self, chat_id: int, since: datetime, timezone: str) -> list[dict]:
+        """Rows of {kind: 'sent' | 'deleted', day: date (in `timezone`), n}."""
+        return await self._fetch(CHAT_ACTIVITY, chat_id, since, timezone)
+
     async def chat_messages(
         self,
         chat_id: int,
@@ -300,6 +315,16 @@ class Repository:
             params.append(before_id)
             clauses.append(f"m.id < ${len(params)}")
         clauses += _filter_clauses(filters, params)
+        if filters.since is not None:
+            # The timeline walks the primary key newest-first. Without a floor on the id, a
+            # chat with less than a page of messages after `since` is walked to its very
+            # first message. Ids grow with time inside a chat, so the first message at or
+            # after `since` (one probe of messages_chat_sent_idx) is that floor.
+            params.append(filters.since)
+            clauses.append(
+                "m.id >= coalesce((SELECT s.id FROM messages s WHERE s.chat_id = $1 "
+                f"AND s.sent_at >= ${len(params)} ORDER BY s.sent_at, s.id LIMIT 1), {MAX_BIGINT})"
+            )
         params.append(limit + 1)
         sql = f"{MESSAGE_SELECT} WHERE {' AND '.join(clauses)} ORDER BY m.id DESC LIMIT ${len(params)}"
         return [_message_row(r) for r in await self._fetch(sql, *params)]
@@ -330,6 +355,24 @@ class Repository:
             limit=limit,
             filters=filters,
             per_chat_index=True,  # messages_deleted_by_chat_idx
+        )
+        return [_message_row(r) for r in await self._fetch(sql, *params)]
+
+    async def edited_messages(
+        self,
+        *,
+        before: tuple[datetime, int] | None = None,
+        limit: int = PAGE_SIZE,
+        filters: MessageFilters = MessageFilters(),
+    ) -> list[dict]:
+        sql, params = _feed_query(
+            ["m.edit_count > 0", "m.edited_at IS NOT NULL"],
+            [],
+            keyset_columns=("m.edited_at", "m.id"),
+            before=before,
+            limit=limit,
+            filters=filters,
+            per_chat_index=True,  # messages_edited_by_chat_idx
         )
         return [_message_row(r) for r in await self._fetch(sql, *params)]
 

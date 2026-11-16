@@ -41,7 +41,8 @@ async def test_chat_messages_applies_keyset_and_every_filter():
     assert "m.sender_user_id = $4" in sql
     assert "m.text ILIKE '%' || $5 || '%' ESCAPE '\\'" in sql
     assert "m.sent_at >= $6" in sql and "m.sent_at < $7" in sql
-    assert args == (-100, 500, -200, 7, "50\\%", NOW, NOW, 11)
+    assert "s.sent_at >= $8 ORDER BY s.sent_at, s.id LIMIT 1" in sql and sql.endswith("LIMIT $9")
+    assert args == (-100, 500, -200, 7, "50\\%", NOW, NOW, NOW, 11)
 
 
 async def test_deleted_messages_filters_by_chat_id():
@@ -299,3 +300,40 @@ def test_chat_topics_query_is_covered_by_topic_index():
     inner = repo_mod.CHAT_TOPICS.split("FROM (")[1].split(") t ")[0]
     assert "sent_at" not in inner
     assert "max(id)" in inner
+
+
+async def test_edited_messages_query():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).edited_messages(before=(NOW, 9), limit=5)
+    sql, args = conn.calls[-1]
+    assert "m.edit_count > 0 AND m.edited_at IS NOT NULL" in sql
+    assert "(m.edited_at, m.id) < ($1, $2)" in sql
+    assert sql.endswith("ORDER BY m.edited_at DESC, m.id DESC")
+    assert args == (NOW, 9, 6)
+    await make_repo(conn := FakeConn(fetch_results=[[]])).edited_messages(
+        filters=MessageFilters(chat_kind="groups")
+    )
+    assert "CROSS JOIN LATERAL" in conn.calls[-1][0]  # messages_edited_by_chat_idx
+
+
+async def test_chat_activity_query():
+    conn = FakeConn(fetch_results=[[{"kind": "sent", "day": NOW.date(), "n": 3}]])
+    rows = await make_repo(conn).chat_activity(-100, NOW, "Europe/Warsaw")
+    assert rows == [{"kind": "sent", "day": NOW.date(), "n": 3}]
+    assert conn.calls[-1] == (repo_mod.CHAT_ACTIVITY, (-100, NOW, "Europe/Warsaw"))
+
+
+async def test_chat_messages_since_floors_the_id_walk():
+    """With `since`, the newest-first primary-key walk must stop at the first message of the
+    window instead of running to the chat's first message when the window is nearly empty."""
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).chat_messages(-100, filters=MessageFilters(since=NOW))
+    sql, args = conn.calls[-1]
+    assert "m.sent_at >= $2" in sql
+    assert (
+        "m.id >= coalesce((SELECT s.id FROM messages s WHERE s.chat_id = $1 "
+        "AND s.sent_at >= $3 ORDER BY s.sent_at, s.id LIMIT 1), 9223372036854775807)"
+    ) in sql
+    assert args == (-100, NOW, NOW, 101)
+    await make_repo(conn).chat_messages(-100)
+    assert "coalesce(" not in conn.calls[-1][0]

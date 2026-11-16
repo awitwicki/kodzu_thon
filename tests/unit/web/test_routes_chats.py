@@ -190,6 +190,7 @@ async def test_filters_are_passed_to_repository_and_kept_in_links(authed_client,
         edited_only=True,
         since=datetime(2026, 9, 1, tzinfo=WARSAW),
         until=datetime(2026, 9, 13, tzinfo=WARSAW),
+        hide_bots=True,
     )
     # the form shows the current values and the next link carries them, minus the old keyset
     assert 'name="q" maxlength="200" value="hi"' in r.text
@@ -227,25 +228,73 @@ async def test_blank_filter_values_are_treated_as_absent(authed_client, fake_rep
     an unfilled "From user id" or a date picker with nothing chosen) - blank must mean
     "not provided", not a validation error, or clearing one field 422s the whole page."""
     seed(fake_repo)
-    r = await authed_client.get("/chats/-100?q=&from=&since=&until=")
+    r = await authed_client.get("/chats/-100?q=&from=&since=&until=&nobots=0")
     assert r.status_code == 200
     _, kwargs = fake_repo.calls[-1]
     assert kwargs["filters"] == MessageFilters()
 
 
-async def test_timeline_hide_bots(authed_client, fake_repo):
+async def test_timeline_hides_bots_by_default(authed_client, fake_repo):
     seed(fake_repo)
     fake_repo.add_user(id=9, first_name="Robo", last_name=None, username="robo_bot", is_bot=True)
     fake_repo.add_message(chat_id=-100, id=1, text="human")
     fake_repo.add_message(chat_id=-100, id=2, sender_user_id=9, text="beep")
-    body = (await authed_client.get("/chats/-100")).text
-    assert 'id="m1"' in body and 'id="m2"' in body
-    assert '<input type="checkbox" name="nobots" value="1"> hide messages from bots' in body
-    assert 'name="kind"' not in body
-    r = await authed_client.get("/chats/-100?nobots=1")
+    r = await authed_client.get("/chats/-100")
     assert 'id="m1"' in r.text and 'id="m2"' not in r.text
-    assert 'name="nobots" value="1" checked' in r.text
-    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(hide_bots=True)
+    assert (
+        '<input type="hidden" name="nobots" value="0">\n'
+        '  <label class="check"><input type="checkbox" name="nobots" value="1" checked>'
+        " hide messages from bots</label>"
+    ) in r.text
+    assert 'name="kind"' not in r.text
+    assert fake_repo.calls[-1][1]["filters"].hide_bots is True
+    # Unchecked: the form submits only the hidden 0.
+    off = await authed_client.get("/chats/-100?nobots=0")
+    assert 'id="m1"' in off.text and 'id="m2"' in off.text
+    assert 'name="nobots" value="1"> hide messages from bots' in off.text
+    assert fake_repo.calls[-1][1]["filters"].hide_bots is False
+    # Checked: hidden 0 followed by the checkbox's 1; the last value wins.
+    on = await authed_client.get("/chats/-100?nobots=0&nobots=1")
+    assert 'id="m2"' not in on.text
+    assert fake_repo.calls[-1][1]["filters"].hide_bots is True
+
+
+async def test_timeline_shows_last_30_days_by_default(authed_client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_message(chat_id=-100, id=1, text="recent", sent_at=NOW - timedelta(days=29))
+    fake_repo.add_message(chat_id=-100, id=2, text="old", sent_at=NOW - timedelta(days=31))
+    r = await authed_client.get("/chats/-100")
+    assert 'id="m1"' in r.text and 'id="m2"' not in r.text
+    assert 'name="since" value="2026-08-14"' in r.text
+    assert fake_repo.calls[-1][1]["filters"].since == datetime(2026, 8, 14, tzinfo=WARSAW)
+    # Clearing the date in the form submits a blank value: all time.
+    everything = await authed_client.get("/chats/-100?since=")
+    assert 'id="m2"' in everything.text and 'name="since" value=""' in everything.text
+    assert fake_repo.calls[-1][1]["filters"].since is None
+
+
+async def test_timeline_activity_chart(authed_client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_message(chat_id=-100, id=1, text="a")
+    fake_repo.add_message(chat_id=-100, id=2, text="b", deleted_at=NOW)
+    fake_repo.add_message(chat_id=-100, id=3, text="c", sent_at=NOW - timedelta(days=2))
+    fake_repo.add_message(chat_id=-100, id=4, text="old", sent_at=NOW - timedelta(days=40))
+    fake_repo.add_message(chat_id=-200, id=5, text="other chat")
+    body = (await authed_client.get("/chats/-100")).text
+    assert "<h2>Last 30 days</h2>" in body
+    assert "<b>3</b> messages" in body and "<b>1</b> deleted" in body
+    assert "<title>13 Sep: 2 messages, 1 deleted</title>" in body
+    assert "<title>11 Sep: 1 messages, 0 deleted</title>" in body
+    assert body.count('<g class="day">') == 31
+    # the chart sits in the side column, after the messages in the document
+    assert body.index("<article") < body.index('class="side-chart"')
+    assert ("chat_activity", {
+        "chat_id": -100,
+        "since": datetime(2026, 8, 14, tzinfo=WARSAW),
+        "timezone": "Europe/Warsaw",
+    }) in fake_repo.calls
+    fake_repo.add_chat(id=-500, title="Quiet", type="group")
+    assert "No messages or deletions in this period." in (await authed_client.get("/chats/-500")).text
 
 
 def seed_forum(fake_repo):
@@ -294,7 +343,9 @@ async def test_forum_timeline_filters_by_topic(authed_client, fake_repo):
     assert 'class="current">News &lt;b&gt;' in body
     assert '<input type="hidden" name="topic" value="5">' in body
     assert 'class="badge topic"' not in body
-    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(topic_id=5, hide_bots=True)
+    assert fake_repo.calls[-1][1]["filters"] == MessageFilters(
+        topic_id=5, hide_bots=True, since=datetime(2026, 8, 14, tzinfo=WARSAW)
+    )
     assert (await authed_client.get("/chats/-400?topic=x")).status_code == 422
     assert (await authed_client.get("/chats/-400?topic=")).status_code == 200
 
@@ -312,5 +363,5 @@ async def test_permalink_and_feeds_show_topic(authed_client, fake_repo):
     fake_repo.add_message(chat_id=-400, id=14, topic_id=9, text="x", deleted_at=NOW)
     body = (await authed_client.get("/chats/-400/messages/11")).text
     assert '<a href="/chats/-400?topic=5">News &lt;b&gt;</a> - message 11' in body
-    body = (await authed_client.get("/deleted")).text
+    body = (await authed_client.get("/changes")).text
     assert '<a href="/chats/-400">Forum</a> &rsaquo; <a href="/chats/-400?topic=9">topic #9</a>' in body

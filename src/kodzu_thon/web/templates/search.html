@@ -1,10 +1,14 @@
 {% extends "layout.html" %}
 {% block title %}Search: {{ filters.q }} - kodzuthon{% endblock %}
 {% block content %}
-<h1>Search</h1>
-{% include "filters.html" %}
-{% set show_chat = true %}
-{% if not albums %}<p class="muted">Nothing found.</p>{% endif %}
-{% for album in albums %}{% include "message_item.html" %}{% endfor %}
-{% if next_url %}<p class="pager"><a href="{{ next_url }}">More results</a></p>{% endif %}
+<div class="split">
+  <section class="feed">
+    <h1>Search</h1>
+    {% set show_chat = true %}
+    {% if not albums %}<p class="muted">Nothing found.</p>{% endif %}
+    {% for album in albums %}{% include "message_item.html" %}{% endfor %}
+    {% if next_url %}<p class="pager"><a href="{{ next_url }}">More results</a></p>{% endif %}
+  </section>
+  <aside class="side-filters">{% include "filters.html" %}</aside>
+</div>
 {% endblock %}

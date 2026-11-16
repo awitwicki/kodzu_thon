@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block title %}Deleted and edited messages - kodzuthon{% endblock %}
+{% block content %}
+<div class="split">
+  <section class="feed">
+    <h1>Deleted and edited messages</h1>
+    <nav class="tabs">
+      <a href="{{ tab_urls.deleted }}"{% if show == "deleted" %} class="current"{% endif %}>Deleted</a>
+      <a href="{{ tab_urls.edited }}"{% if show == "edited" %} class="current"{% endif %}>Edited</a>
+    </nav>
+    {% set show_chat = true %}
+    {% if not albums %}<p class="muted">No {{ show }} messages match.</p>{% endif %}
+    {% for album in albums %}{% include "message_item.html" %}{% endfor %}
+    {% if next_url %}<p class="pager"><a href="{{ next_url }}">Older</a></p>{% endif %}
+  </section>
+  <aside class="side-filters">{% include "filters.html" %}</aside>
+</div>
+{% endblock %}

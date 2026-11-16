@@ -1,0 +1,30 @@
+{# Messages per day (up) and deletions per day (down); each has its own scale. #}
+<section class="activity">
+  <h2>Last {{ chart.days - 1 }} days</h2>
+  {% if not chart.total_sent and not chart.total_deleted %}
+  <p class="muted">No messages or deletions in this period.</p>
+  {% else %}
+  <p class="totals">
+    <span class="sent"><b>{{ chart.total_sent | num }}</b> messages</span>
+    <span class="gone"><b>{{ chart.total_deleted | num }}</b> deleted</span>
+  </p>
+  <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Messages and deletions per day: {{ chart.total_sent }} messages and {{ chart.total_deleted }} deleted in {{ chart.days }} days">
+    <defs>
+      <linearGradient id="activity-up" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" class="up-top"/><stop offset="1" class="up-bottom"/>
+      </linearGradient>
+    </defs>
+    {% for b in chart.bars %}
+    <g class="day">
+      <title>{{ b.label }}</title>
+      <rect class="slot" x="{{ b.slot_x }}" y="0" width="{{ chart.slot }}" height="{{ chart.height }}"/>
+      {% if b.up %}<rect class="up" x="{{ b.x }}" y="{{ b.up_y }}" width="{{ chart.bar_width }}" height="{{ b.up }}" rx="1.5" fill="url(#activity-up)"/>{% endif %}
+      {% if b.down %}<rect class="down" x="{{ b.x }}" y="{{ chart.base + 2 }}" width="{{ chart.bar_width }}" height="{{ b.down }}" rx="1.5"/>{% endif %}
+    </g>
+    {% endfor %}
+    <line class="baseline" x1="0" y1="{{ chart.base + 1 }}" x2="{{ chart.width }}" y2="{{ chart.base + 1 }}"/>
+  </svg>
+  <p class="axis muted"><span>{{ chart.start.day }} {{ chart.start.strftime("%b") }}</span><span>today</span></p>
+  <p class="muted">Busiest day: {{ chart.peak_sent | num }} messages{% if chart.peak_deleted %}, {{ chart.peak_deleted | num }} deleted{% endif %}. Hover a bar for that day.</p>
+  {% endif %}
+</section>

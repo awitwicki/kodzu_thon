@@ -31,6 +31,7 @@ def build_env(timezone: str) -> Environment:
     env.globals["git_diff"] = git_diff
     env.filters["localtime"] = lambda value: local_time(value, timezone)
     env.filters["human_size"] = human_size
+    env.filters["num"] = lambda value: f"{value:,}".replace(",", "\u202f")
     env.globals["display_name"] = display_name
     env.globals["topic_name"] = topic_name
     return env

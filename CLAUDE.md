@@ -105,6 +105,17 @@ Design spec: `docs/superpowers/specs/2026-09-13-message-archive-design.md`.
   (`/chats/{id}/messages/{id}`), where the full edit history and raw JSON actually render —
   it is not shown inline in the timeline, since the timeline query doesn't join
   `message_edits` and inlining it there would mean an extra query per row.
+- Deleted and edited messages across all chats share one page, `/changes` (`show=deleted|edited`
+  tabs; `/deleted` redirects there). Feed pages use a two-column `.split` layout: messages on
+  the left, the filter form (and on a chat page the activity chart) in a side column.
+- Defaults live in `web/routes/common.py: filters_dependency`: pages with a "Since" input
+  (chat timeline, search, user profile) show the last 30 days when `since` is absent from the
+  URL, and a blank `since=` means all time; the chat timeline also hides bots unless the URL
+  says `nobots=0` (the form sends a hidden `nobots=0` ahead of the checkbox). Web unit tests
+  therefore pin the clock to the fixtures' `NOW` (`tests/unit/web/conftest.py: pinned_clock`).
+- The chat page's activity chart (`web/chart.py`, `templates/activity_chart.html`) is inline
+  SVG styled only through CSS classes and presentation attributes, since the CSP forbids
+  scripts and inline styles.
 - The web service never migrates; `web/app.py: check_schema` refuses to start on an older
   schema. Start the recorder first.
 - CLI: `python -m kodzu_thon.web [serve | hash-password | totp-secret]`.

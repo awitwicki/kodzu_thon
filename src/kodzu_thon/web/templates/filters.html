@@ -1,5 +1,6 @@
 <form class="filters" method="get" action="{{ path }}">
   {% if filters.topic_id %}<input type="hidden" name="topic" value="{{ filters.topic_id }}">{% endif %}
+  {% if show is defined %}<input type="hidden" name="show" value="{{ show }}">{% endif %}
   <label>Text<input type="search" name="q" maxlength="200" value="{{ filters.q or '' }}"></label>
   <label>From user id<input type="number" name="from" min="1" value="{{ filters.sender_id or '' }}"></label>
   {% if chat_options is defined %}
@@ -10,20 +11,26 @@
     {% endfor %}
   </select></label>
   {% endif %}
+  {% if not compact %}
+  <label>Since (clear for all time)<input type="date" name="since" value="{{ filters.since.date().isoformat() if filters.since else '' }}"></label>
+  <label>Until (exclusive)<input type="date" name="until" value="{{ filters.until.date().isoformat() if filters.until else '' }}"></label>
+  {% endif %}
   {% if show_kind is defined %}
   {% for value, label in [("groups", "chats"), ("channels", "channels")] %}
-  <label><input type="checkbox" name="kind" value="{{ value }}"{% if filters.chat_kind in (none, value) %} checked{% endif %}> {{ label }}</label>
+  <label class="check"><input type="checkbox" name="kind" value="{{ value }}"{% if filters.chat_kind in (none, value) %} checked{% endif %}> {{ label }}</label>
   {% endfor %}
   {% endif %}
   {% if show_hide_bots is defined %}
-  <label><input type="checkbox" name="nobots" value="1"{% if filters.hide_bots %} checked{% endif %}> hide messages from bots</label>
+  {# The hidden 0 makes "unchecked" explicit, so a page can default the box to checked. #}
+  <input type="hidden" name="nobots" value="0">
+  <label class="check"><input type="checkbox" name="nobots" value="1"{% if filters.hide_bots %} checked{% endif %}> hide messages from bots</label>
   {% endif %}
   {% if not compact %}
-  <label>Since<input type="date" name="since" value="{{ query.get('since', '') }}"></label>
-  <label>Until (exclusive)<input type="date" name="until" value="{{ query.get('until', '') }}"></label>
-  <label><input type="checkbox" name="deleted" value="1"{% if filters.deleted_only %} checked{% endif %}> deleted only</label>
-  <label><input type="checkbox" name="edited" value="1"{% if filters.edited_only %} checked{% endif %}> edited only</label>
+  <label class="check"><input type="checkbox" name="deleted" value="1"{% if filters.deleted_only %} checked{% endif %}> deleted only</label>
+  <label class="check"><input type="checkbox" name="edited" value="1"{% if filters.edited_only %} checked{% endif %}> edited only</label>
   {% endif %}
-  <button type="submit">Filter</button>
-  <a href="{{ path }}">reset</a>
+  <div class="actions">
+    <button type="submit">Filter</button>
+    <a href="{{ path }}">reset</a>
+  </div>
 </form>

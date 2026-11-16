@@ -274,3 +274,38 @@ async def test_deleted_feed_by_chat_kind_merges_chats_newest_first(repo, dsn):
     assert [r["id"] for r in await repo.deleted_messages(filters=kind, limit=1)] == [2, 3]
     page2 = await repo.deleted_messages(filters=kind, before=(NOW, 3))
     assert [r["id"] for r in page2] == [1]
+
+
+async def test_edited_feed_and_chat_activity(repo, dsn):
+    later = NOW + timedelta(minutes=5)
+    await write(
+        dsn,
+        rec(1, text="a"),
+        rec(2, text="b"),
+        rec(3, text="c"),
+        EditRecord(message=rec(1, text="a2"), edited_at=NOW),
+        EditRecord(message=rec(3, text="c2"), edited_at=later),
+        DeletionRecord(chat_id=GROUP_ID, message_ids=(2,), observed_at=later),
+    )
+    assert [r["id"] for r in await repo.edited_messages()] == [3, 1]
+    by_kind = await repo.edited_messages(filters=MessageFilters(chat_kind="groups"))
+    assert [r["id"] for r in by_kind] == [3, 1]
+    assert [r["id"] for r in await repo.edited_messages(before=(later, 3))] == [1]
+    assert await repo.edited_messages(filters=MessageFilters(chat_kind="channels")) == []
+
+    sent_day = (await repo.get_message(GROUP_ID, 1))["sent_at"]
+    rows = await repo.chat_activity(GROUP_ID, sent_day - timedelta(days=1), "UTC")
+    assert {(r["kind"], r["day"]): r["n"] for r in rows} == {
+        ("sent", sent_day.date()): 3,
+        ("deleted", later.date()): 1,
+    }
+    assert await repo.chat_activity(GROUP_ID, later + timedelta(days=1), "UTC") == []
+
+
+async def test_chat_timeline_since_window(repo, dsn):
+    await write(dsn, rec(1, text="a"), rec(2, text="b"))
+    sent = (await repo.get_message(GROUP_ID, 1))["sent_at"]
+    inside = MessageFilters(since=sent - timedelta(days=1))
+    assert [r["id"] for r in await repo.chat_messages(GROUP_ID, filters=inside)] == [2, 1]
+    after = MessageFilters(since=sent + timedelta(days=1))
+    assert await repo.chat_messages(GROUP_ID, filters=after) == []

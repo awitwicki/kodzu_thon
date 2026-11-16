@@ -40,7 +40,7 @@ def seed(fake_repo):
 
 
 async def test_requires_login(client):
-    for path in ("/chats/-100/messages/1", "/users/7", "/deleted", "/search?q=x"):
+    for path in ("/chats/-100/messages/1", "/users/7", "/changes", "/search?q=x"):
         r = await client.get(path)
         assert r.status_code == 303 and r.headers["location"] == "/login"
 
@@ -99,7 +99,9 @@ async def test_user_profile_filters_by_chat_id(authed_client, fake_repo):
     assert body.count("<article") == 1 and 'id="m5"' in body
     assert '<option value="-200" selected>Other</option>' in body
     kwargs = fake_repo.calls[-1][1]
-    assert kwargs["filters"] == MessageFilters(chat_id=-200)
+    assert kwargs["filters"] == MessageFilters(
+        chat_id=-200, since=datetime(2026, 8, 14, tzinfo=WARSAW)
+    )
 
 
 async def test_user_messages_keyset_links(authed_client, fake_repo):
@@ -119,7 +121,7 @@ async def test_user_messages_keyset_links(authed_client, fake_repo):
 
 async def test_deleted_feed(authed_client, fake_repo):
     seed(fake_repo)
-    r = await authed_client.get("/deleted")
+    r = await authed_client.get("/changes")
     assert r.status_code == 200
     body = r.text
     assert body.count("<article") == 2
@@ -141,26 +143,26 @@ async def test_deleted_feed_keyset_and_filters(authed_client, fake_repo):
         fake_repo.add_message(
             chat_id=-100, id=i, text="gone", deleted_at=NOW + timedelta(seconds=i)
         )
-    r = await authed_client.get("/deleted?q=gone&from=7")
+    r = await authed_client.get("/changes?q=gone&from=7")
     assert r.text.count("<article") == 100
     assert "before_ts=" in r.text and "before_id=12" in r.text
     kwargs = fake_repo.calls[-1][1]
     assert kwargs["filters"] == MessageFilters(q="gone", sender_id=7)
     assert (
-        await authed_client.get("/deleted?before_ts=2026-09-13T12:00:00%2B00:00")
+        await authed_client.get("/changes?before_ts=2026-09-13T12:00:00%2B00:00")
     ).status_code == 422
-    assert (await authed_client.get("/deleted?before_id=5")).status_code == 422
+    assert (await authed_client.get("/changes?before_id=5")).status_code == 422
     assert (
-        await authed_client.get("/deleted?before_ts=2026-09-13T12:00:00&before_id=5")
+        await authed_client.get("/changes?before_ts=2026-09-13T12:00:00&before_id=5")
     ).status_code == 422
-    assert (await authed_client.get("/deleted?chat=abc")).status_code == 422
+    assert (await authed_client.get("/changes?chat=abc")).status_code == 422
 
 
 async def test_deleted_feed_blank_filter_values_are_treated_as_absent(authed_client, fake_repo):
     """The filter form (chat select on "All chats", "From user id" left blank) submits
     q=&from=&chat= rather than omitting them; that must behave like no filter at all."""
     seed(fake_repo)
-    r = await authed_client.get("/deleted?q=&from=&chat=")
+    r = await authed_client.get("/changes?q=&from=&chat=")
     assert r.status_code == 200
     kwargs = fake_repo.calls[-1][1]
     assert kwargs["filters"] == MessageFilters()
@@ -168,7 +170,7 @@ async def test_deleted_feed_blank_filter_values_are_treated_as_absent(authed_cli
 
 async def test_deleted_feed_blank_from_with_chat_selected(authed_client, fake_repo):
     seed(fake_repo)
-    r = await authed_client.get("/deleted?q=&from=&chat=-1002190657950")
+    r = await authed_client.get("/changes?q=&from=&chat=-1002190657950")
     assert r.status_code == 200
     kwargs = fake_repo.calls[-1][1]
     assert kwargs["filters"] == MessageFilters(chat_id=-1002190657950)
@@ -176,7 +178,7 @@ async def test_deleted_feed_blank_from_with_chat_selected(authed_client, fake_re
 
 async def test_deleted_feed_filters_by_chat_id(authed_client, fake_repo):
     seed(fake_repo)
-    r = await authed_client.get("/deleted?chat=-200")
+    r = await authed_client.get("/changes?chat=-200")
     assert r.status_code == 200
     body = r.text
     assert body.count("<article") == 1 and 'id="m5"' in body
@@ -210,7 +212,9 @@ async def test_search_filters_by_chat_id(authed_client, fake_repo):
     assert body.count("<article") == 1 and 'id="m1"' in body
     assert '<option value="-100" selected>Grp</option>' in body
     kwargs = fake_repo.calls[-1][1]
-    assert kwargs["filters"] == MessageFilters(q="ir", chat_id=-100)
+    assert kwargs["filters"] == MessageFilters(
+        q="ir", chat_id=-100, since=datetime(2026, 8, 14, tzinfo=WARSAW)
+    )
 
 
 async def test_search_pagination(authed_client, fake_repo):
@@ -235,7 +239,7 @@ def seed_kinds_and_bots(fake_repo):
 
 async def test_deleted_feed_kind_checkboxes_default_to_both(authed_client, fake_repo):
     seed_kinds_and_bots(fake_repo)
-    r = await authed_client.get("/deleted")
+    r = await authed_client.get("/changes")
     body = r.text
     assert body.count("<article") == 4
     assert '<input type="checkbox" name="kind" value="groups" checked> chats' in body
@@ -246,7 +250,7 @@ async def test_deleted_feed_kind_checkboxes_default_to_both(authed_client, fake_
 
 async def test_deleted_feed_only_chats(authed_client, fake_repo):
     seed_kinds_and_bots(fake_repo)
-    r = await authed_client.get("/deleted?kind=groups")
+    r = await authed_client.get("/changes?kind=groups")
     body = r.text
     assert 'id="m6"' not in body and 'id="m5"' in body and 'id="m2"' in body
     assert 'value="groups" checked' in body and 'value="channels">' in body
@@ -255,7 +259,7 @@ async def test_deleted_feed_only_chats(authed_client, fake_repo):
 
 async def test_deleted_feed_only_channels(authed_client, fake_repo):
     seed_kinds_and_bots(fake_repo)
-    r = await authed_client.get("/deleted?kind=channels")
+    r = await authed_client.get("/changes?kind=channels")
     assert r.text.count("<article") == 1 and 'id="m6"' in r.text
     assert 'value="groups">' in r.text and 'value="channels" checked' in r.text
     assert fake_repo.calls[-1][1]["filters"] == MessageFilters(chat_kind="channels")
@@ -263,15 +267,15 @@ async def test_deleted_feed_only_channels(authed_client, fake_repo):
 
 async def test_deleted_feed_both_kinds_is_no_filter(authed_client, fake_repo):
     seed_kinds_and_bots(fake_repo)
-    r = await authed_client.get("/deleted?kind=groups&kind=channels")
+    r = await authed_client.get("/changes?kind=groups&kind=channels")
     assert r.text.count("<article") == 4
     assert fake_repo.calls[-1][1]["filters"] == MessageFilters()
-    assert (await authed_client.get("/deleted?kind=users")).status_code == 422
+    assert (await authed_client.get("/changes?kind=users")).status_code == 422
 
 
 async def test_deleted_feed_hide_bots(authed_client, fake_repo):
     seed_kinds_and_bots(fake_repo)
-    r = await authed_client.get("/deleted?nobots=1&kind=groups")
+    r = await authed_client.get("/changes?nobots=1&kind=groups")
     body = r.text
     assert 'id="m7"' not in body and 'id="m6"' not in body and 'id="m5"' in body
     assert 'name="nobots" value="1" checked' in body
@@ -282,7 +286,7 @@ async def test_deleted_feed_pagination_keeps_kind_and_nobots(authed_client, fake
     seed_kinds_and_bots(fake_repo)
     for i in range(10, 112):
         fake_repo.add_message(chat_id=-100, id=i, text="gone", deleted_at=NOW + timedelta(seconds=i))
-    r = await authed_client.get("/deleted?kind=groups&nobots=1")
+    r = await authed_client.get("/changes?kind=groups&nobots=1")
     assert "kind=groups&amp;nobots=1&amp;before_ts=" in r.text
 
 
@@ -290,3 +294,55 @@ async def test_search_has_no_kind_or_bot_checkboxes(authed_client, fake_repo):
     seed(fake_repo)
     body = (await authed_client.get("/search?q=ir")).text
     assert 'name="kind"' not in body and 'name="nobots"' not in body
+
+
+async def test_changes_feed_edited_tab(authed_client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_message(
+        chat_id=-200, id=8, text="fixed typo", edit_count=2, edited_at=NOW + timedelta(minutes=1)
+    )
+    r = await authed_client.get("/changes?show=edited&kind=groups")
+    assert r.status_code == 200
+    body = r.text
+    assert body.index('id="m8"') < body.index('id="m1"')  # newest edit first
+    assert '<a href="/changes?kind=groups&amp;show=edited" class="current">Edited</a>' in body
+    assert '<a href="/changes?kind=groups&amp;show=deleted">Deleted</a>' in body
+    assert '<input type="hidden" name="show" value="edited">' in body
+    assert fake_repo.calls[-1][0] == "edited_messages"
+    assert (await authed_client.get("/changes?show=other")).status_code == 422
+
+
+async def test_changes_feed_edited_pagination_uses_edited_at(authed_client, fake_repo):
+    seed(fake_repo)
+    for i in range(10, 112):
+        fake_repo.add_message(
+            chat_id=-100, id=i, text="e", edit_count=1, edited_at=NOW + timedelta(seconds=i)
+        )
+    r = await authed_client.get("/changes?show=edited")
+    last_ts = (NOW + timedelta(seconds=12)).isoformat().replace("+", "%2B").replace(":", "%3A")
+    assert f"show=edited&amp;before_ts={last_ts}&amp;before_id=12" in r.text
+
+
+async def test_old_deleted_url_redirects_to_changes(authed_client, client):
+    r = await authed_client.get("/deleted?kind=channels&nobots=1")
+    assert r.status_code == 308
+    assert r.headers["location"] == "/changes?kind=channels&nobots=1"
+    assert (await authed_client.get("/deleted")).headers["location"] == "/changes"
+
+
+async def test_nav_links_to_the_single_changes_page(authed_client, fake_repo):
+    body = (await authed_client.get("/")).text
+    assert '<a href="/changes">Deleted &amp; edited</a>' in body and 'href="/deleted"' not in body
+
+
+async def test_search_and_user_pages_default_to_last_30_days(authed_client, fake_repo):
+    seed(fake_repo)
+    fake_repo.add_message(chat_id=-100, id=20, text="first ancient", sent_at=NOW - timedelta(days=45))
+    r = await authed_client.get("/search?q=first")
+    assert 'id="m1"' in r.text and 'id="m20"' not in r.text
+    assert 'name="since" value="2026-08-14"' in r.text
+    assert 'id="m20"' in (await authed_client.get("/search?q=first&since=")).text
+    assert 'id="m20"' not in (await authed_client.get("/users/7")).text
+    # the deleted/edited feed has no date inputs and is not limited
+    await authed_client.get("/changes")
+    assert fake_repo.calls[-1][1]["filters"].since is None

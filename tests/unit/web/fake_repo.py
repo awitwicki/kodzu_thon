@@ -1,8 +1,9 @@
 """In-memory stand-in for kodzu_thon.web.repository.Repository. Same method
 names, same dict shapes, simple Python filtering. Records calls for assertions."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from kodzu_thon.db import SCHEMA_VERSION
 from kodzu_thon.web.repository import CHAT_KINDS, PAGE_SIZE, MessageFilters
@@ -242,6 +243,19 @@ class FakeRepository:
         result.sort(key=lambda t: (-t["last_message_id"], t["id"]))
         return result
 
+    async def chat_activity(self, chat_id: int, since: datetime, timezone: str) -> list[dict]:
+        self._record("chat_activity", chat_id=chat_id, since=since, timezone=timezone)
+        tz = ZoneInfo(timezone)
+        counts: dict[tuple[str, date], int] = {}
+        for r in self.messages:
+            if r["chat_id"] != chat_id:
+                continue
+            for kind, ts in (("sent", r["sent_at"]), ("deleted", r["deleted_at"])):
+                if ts is not None and ts >= since:
+                    key = (kind, ts.astimezone(tz).date())
+                    counts[key] = counts.get(key, 0) + 1
+        return [{"kind": k, "day": d, "n": n} for (k, d), n in counts.items()]
+
     async def chat_messages(
         self,
         chat_id: int,
@@ -283,6 +297,20 @@ class FakeRepository:
         rows = self._keyset(rows, "deleted_at", before)
         rows = self._apply_filters(rows, filters)
         rows.sort(key=lambda r: (r["deleted_at"], r["id"]), reverse=True)
+        return [dict(r) for r in rows[: limit + 1]]
+
+    async def edited_messages(
+        self,
+        *,
+        before: tuple[datetime, int] | None = None,
+        limit: int = PAGE_SIZE,
+        filters: MessageFilters = MessageFilters(),
+    ) -> list[dict]:
+        self._record("edited_messages", before=before, limit=limit, filters=filters)
+        rows = [r for r in self.messages if r["edit_count"] > 0 and r["edited_at"] is not None]
+        rows = self._keyset(rows, "edited_at", before)
+        rows = self._apply_filters(rows, filters)
+        rows.sort(key=lambda r: (r["edited_at"], r["id"]), reverse=True)
         return [dict(r) for r in rows[: limit + 1]]
 
     async def search_messages(

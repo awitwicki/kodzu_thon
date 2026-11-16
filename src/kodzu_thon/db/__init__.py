@@ -3,5 +3,5 @@ the recorder (`services/message_store.py`) on its first database connection."""
 
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"

@@ -4,9 +4,9 @@ from fastapi import APIRouter, HTTPException, Request
 
 from kodzu_thon.web.render import render
 from kodzu_thon.web.routes.common import (
-    FiltersDep,
     KeysetDep,
     LimitDep,
+    RecentFiltersDep,
     RepoDep,
     next_page_url,
     paginate,
@@ -22,7 +22,7 @@ async def search(
     request: Request,
     session: SessionDep,
     repo: RepoDep,
-    filters: FiltersDep,
+    filters: RecentFiltersDep,
     limit: LimitDep,
     keyset: KeysetDep,
 ):

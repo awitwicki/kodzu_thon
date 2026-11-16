@@ -3,8 +3,15 @@ import pytest
 
 from kodzu_thon.web.app import create_app
 from kodzu_thon.web.config import WebSettings
-from tests.unit.web.fake_repo import FakeRepository
-from tests.unit.web.helpers import PASSWORD_HASH, login
+from tests.unit.web.fake_repo import NOW, FakeRepository
+from tests.unit.web.helpers import PASSWORD_HASH, login, set_now
+
+
+@pytest.fixture(autouse=True)
+def pinned_clock(mocker):
+    """Pages default to "the last 30 days", so the seeded rows (dated around NOW) are only
+    visible while the web clock is near NOW. Tests that need another time call set_now."""
+    set_now(mocker, NOW)
 
 
 @pytest.fixture
