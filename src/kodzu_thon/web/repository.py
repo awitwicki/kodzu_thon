@@ -189,7 +189,10 @@ def _feed_query(
     before: tuple[datetime, int] | None,
     limit: int,
     filters: MessageFilters,
+    per_chat_index: bool = False,
 ) -> tuple[str, list[Any]]:
+    """`per_chat_index`: an index on (chat_id, *keyset_columns) covers `base_clauses`, so a
+    chat-kind filter can take each matching chat's newest rows from it (see below)."""
     clauses = list(base_clauses)
     if before is not None:
         params.extend(before)
@@ -206,15 +209,27 @@ def _feed_query(
     # display columns onto those few rows. The display query has more relations than
     # Postgres' join_collapse_limit (8), so the planner keeps the written join order:
     # `page` must come first or it joins the whole messages table before narrowing.
-    page_joins = ""
-    if filters.chat_kind is not None:
-        page_joins += " JOIN chats c ON c.id = m.chat_id"
-    if filters.hide_bots:
-        page_joins += " LEFT JOIN users u ON u.id = m.sender_user_id"
-    page = (
-        f"SELECT m.chat_id, m.id FROM messages m{page_joins} WHERE {where} "
-        f"ORDER BY {order} LIMIT ${len(params)}"
-    )
+    user_join = " LEFT JOIN users u ON u.id = m.sender_user_id" if filters.hide_bots else ""
+    limit_param = f"${len(params)}"
+    if filters.chat_kind is not None and per_chat_index:
+        # Walking the global keyset index and discarding rows of the other chat kind never
+        # fills a page when the wanted kind is rare (channels), and times out. Instead take
+        # the top rows of each chat of that kind off the per-chat index and merge them.
+        kind_clause = next(c for c in clauses if c.startswith("c.type = "))
+        inner = " AND ".join(["m.chat_id = c.id", *(c for c in clauses if c != kind_clause)])
+        columns = ", ".join(dict.fromkeys(("m.chat_id", "m.id", *keyset_columns)))
+        page = (
+            f"SELECT m.chat_id, m.id FROM chats c CROSS JOIN LATERAL ("
+            f"SELECT {columns} FROM messages m{user_join} WHERE {inner} "
+            f"ORDER BY {order} LIMIT {limit_param}) m "
+            f"WHERE {kind_clause} ORDER BY {order} LIMIT {limit_param}"
+        )
+    else:
+        chat_join = " JOIN chats c ON c.id = m.chat_id" if filters.chat_kind is not None else ""
+        page = (
+            f"SELECT m.chat_id, m.id FROM messages m{chat_join}{user_join} WHERE {where} "
+            f"ORDER BY {order} LIMIT {limit_param}"
+        )
     sql = (
         f"WITH page AS MATERIALIZED ({page}) {MESSAGE_COLUMNS} "
         "FROM page p JOIN messages m ON m.chat_id = p.chat_id AND m.id = p.id "
@@ -314,6 +329,7 @@ class Repository:
             before=before,
             limit=limit,
             filters=filters,
+            per_chat_index=True,  # messages_deleted_by_chat_idx
         )
         return [_message_row(r) for r in await self._fetch(sql, *params)]
 

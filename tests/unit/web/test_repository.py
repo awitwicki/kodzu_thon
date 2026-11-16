@@ -86,20 +86,45 @@ async def test_deleted_messages_keyset_on_deleted_at():
 
 async def test_feed_query_picks_page_keys_before_joining_display_columns():
     conn = FakeConn(fetch_results=[[]])
-    await make_repo(conn).deleted_messages(
-        filters=MessageFilters(chat_kind="channels", hide_bots=True)
-    )
+    await make_repo(conn).deleted_messages(filters=MessageFilters(hide_bots=True))
     sql, args = conn.calls[-1]
     page, outer = sql.split(") SELECT ", 1)
     assert page.startswith("WITH page AS MATERIALIZED (SELECT m.chat_id, m.id FROM messages m")
-    assert "JOIN chats c ON c.id = m.chat_id" in page and "LEFT JOIN users u" in page
-    assert "c.type = ANY($1::text[])" in page and "u.is_bot IS NOT TRUE" in page
-    assert "LIMIT $2" in page and "LEFT JOIN messages r" not in page
+    assert "LEFT JOIN users u" in page and "u.is_bot IS NOT TRUE" in page
+    assert "LIMIT $1" in page and "LEFT JOIN messages r" not in page
     # page drives the display joins: it must be first in FROM (join_collapse_limit)
     assert "FROM page p JOIN messages m ON m.chat_id = p.chat_id AND m.id = p.id" in outer
     assert "LEFT JOIN messages r" in outer
     assert outer.endswith("ORDER BY m.deleted_at DESC, m.id DESC")
-    assert args == (["channel"], 101)
+    assert args == (101,)
+
+
+async def test_deleted_feed_by_chat_kind_reads_each_chat_off_the_per_chat_index():
+    """A global walk of the deleted index filtered by chat type times out when that type is
+    rare; the page must instead be the merged per-chat tops (messages_deleted_by_chat_idx)."""
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).deleted_messages(
+        before=(NOW, 9), filters=MessageFilters(chat_kind="channels", hide_bots=True)
+    )
+    sql, args = conn.calls[-1]
+    page = sql.split(") SELECT ", 1)[0]
+    assert page.startswith(
+        "WITH page AS MATERIALIZED (SELECT m.chat_id, m.id FROM chats c CROSS JOIN LATERAL ("
+        "SELECT m.chat_id, m.id, m.deleted_at FROM messages m "
+        "LEFT JOIN users u ON u.id = m.sender_user_id "
+        "WHERE m.chat_id = c.id AND m.deleted_at IS NOT NULL AND (m.deleted_at, m.id) < ($1, $2) "
+        "AND u.is_bot IS NOT TRUE ORDER BY m.deleted_at DESC, m.id DESC LIMIT $4) m "
+        "WHERE c.type = ANY($3::text[]) ORDER BY m.deleted_at DESC, m.id DESC LIMIT $4"
+    )
+    assert args == (NOW, 9, ["channel"], 101)
+
+
+async def test_search_by_chat_kind_keeps_the_plain_join():
+    conn = FakeConn(fetch_results=[[]])
+    await make_repo(conn).search_messages(filters=MessageFilters(q="x", chat_kind="groups"))
+    page = conn.calls[-1][0].split(") SELECT ", 1)[0]
+    assert "FROM messages m JOIN chats c ON c.id = m.chat_id WHERE" in page
+    assert "LATERAL" not in page
 
 
 async def test_feed_page_query_skips_joins_no_filter_needs():

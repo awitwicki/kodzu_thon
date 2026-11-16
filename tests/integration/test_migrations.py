@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 
 
 async def test_migrations_apply_and_are_idempotent(db):
-    assert await apply_migrations(db) == [1, 2]
+    assert await apply_migrations(db) == [1, 2, 3, 4]
     assert await apply_migrations(db) == []
     tables = {
         r["table_name"]
@@ -61,7 +61,7 @@ async def test_forum_topics_migration_backfills_from_raw(db, tmp_path):
     await db.executemany(
         "INSERT INTO messages (chat_id, id, sent_at, raw) VALUES ($1, $2, now(), $3::jsonb)", rows
     )
-    assert await apply_migrations(db) == [2]
+    assert await apply_migrations(db) == [2, 3, 4]
     topics = {
         (r["chat_id"], r["id"]): r["topic_id"]
         for r in await db.fetch("SELECT chat_id, id, topic_id FROM messages")

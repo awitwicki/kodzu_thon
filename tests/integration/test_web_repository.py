@@ -257,3 +257,20 @@ async def test_forum_topics(repo, dsn):
         (3, 5, "News renamed"),
         (2, 5, "News renamed"),
     ]
+
+
+async def test_deleted_feed_by_chat_kind_merges_chats_newest_first(repo, dsn):
+    later = NOW + timedelta(minutes=5)
+    await write(
+        dsn,
+        rec(1, text="a"),
+        rec(2, text="b"),
+        rec(3, text="c"),
+        DeletionRecord(chat_id=GROUP_ID, message_ids=(1, 3), observed_at=NOW),
+        DeletionRecord(chat_id=GROUP_ID, message_ids=(2,), observed_at=later),
+    )
+    kind = MessageFilters(chat_kind="groups")
+    assert [r["id"] for r in await repo.deleted_messages(filters=kind)] == [2, 3, 1]
+    assert [r["id"] for r in await repo.deleted_messages(filters=kind, limit=1)] == [2, 3]
+    page2 = await repo.deleted_messages(filters=kind, before=(NOW, 3))
+    assert [r["id"] for r in page2] == [1]
